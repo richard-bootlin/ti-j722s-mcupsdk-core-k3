@@ -61,7 +61,7 @@ const defines_r5f = {
         "CONFIG_RM_UDMAP",
         "CONFIG_UDMAP_BCDMA",
         "CONFIG_UDMAP_PKTDMA",
-    //    "CONFIG_LPM_DM",
+        "CONFIG_LPM_DM",
         "CONFIG_TRACE",
         "CONFIG_TRACE_BUFFER",
     //    "CONFIG_TRACE_UART",
