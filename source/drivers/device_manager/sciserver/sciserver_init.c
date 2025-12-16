@@ -32,6 +32,7 @@
 
 #include <drivers/device_manager/sciserver/sciserver_init.h>
 #include <drivers/device_manager/sciclient.h>
+#include <drivers/device_manager/rm_pm_hal/rm_pm_hal_src/lpm/include/debug_qnr.c>
 
 /** \brief Task Ids to be used for the user and DM tasks */
 enum Sciserver_TaskIds {
@@ -141,6 +142,7 @@ void sciServer_init(void)
     if (ret == SystemP_SUCCESS)
     {
        DebugP_log("Starting Sciserver..... PASSED\r\n");
+Lpm_debugPrintf("\n"); // enable uart
     }
     else
     {
