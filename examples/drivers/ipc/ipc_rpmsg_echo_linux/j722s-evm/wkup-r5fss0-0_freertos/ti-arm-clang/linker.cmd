@@ -6,6 +6,7 @@
 --retain="*(.abortStack)";
 --retain="*(.undefinedstack)";
 --retain="*(.svcStack)";
+--retain="*(.ctx_buffer)"
 --fill_value=0
 /* This is the stack that is used by code running within main()
  * In case of NORTOS,
@@ -85,6 +86,8 @@ SECTIONS
         RUN_END(__BSS_END)
     } > DDR
 
+    .ctx_buffer (NOLOAD) : { . = . + 256K; } palign(128) > MCU1_0_LPM_CTX_BUFF
+
     /* USB or any other LLD buffer for benchmarking */
     .benchmark_buffer (NOLOAD) {} ALIGN (8) > DDR
 
@@ -131,4 +134,5 @@ MEMORY
     DDR_IPC_RESOURCE_TABLE_LINUX  : ORIGIN = 0xA0100000, LENGTH = 0x400      /* For resource table   */
     DDR_IPC_TRACE_LINUX           : ORIGIN = 0xA0100400, LENGTH = 0xFFC00    /* IPC trace buffer     */
     DDR_IPC_VRING_RTOS            : ORIGIN = 0xA5000000, LENGTH = 0x1C00000   /* IPC VRING for RTOS/NoRTOS */
+    MCU1_0_LPM_CTX_BUFF (RW)      : ORIGIN = 0xA0200000, LENGTH = 0x40000    /* LPM save addr */
 }
