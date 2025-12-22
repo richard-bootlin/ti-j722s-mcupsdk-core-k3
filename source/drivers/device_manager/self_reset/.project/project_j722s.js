@@ -26,7 +26,6 @@ const filedirs_r5f = {
 const defines_r5f = {
     common: [
         "MCU_PLUS_SDK",
-        "CONFIG_LPM_DM",
     ],
 };
 
