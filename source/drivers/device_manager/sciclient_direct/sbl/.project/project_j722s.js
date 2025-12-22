@@ -47,6 +47,7 @@ const defines_r5f = {
         "BUILD_MCU1_0",
         "BUILD_MCU",
         "CONFIG_GET_FW_CAPS",
+	"CONFIG_LPM_DM",
         "CONFIG_PM",
         "CONFIG_PSC",
         "CONFIG_CLOCK",

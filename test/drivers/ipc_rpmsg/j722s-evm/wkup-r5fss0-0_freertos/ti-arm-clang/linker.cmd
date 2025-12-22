@@ -6,6 +6,7 @@
 --retain="*(.abortStack)";
 --retain="*(.undefinedstack)";
 --retain="*(.svcStack)";
+--retain="*(.ctx_buffer)";
 --fill_value=0
 /* This is the stack that is used by code running within main()
  * In case of NORTOS,
@@ -79,6 +80,10 @@ SECTIONS
     .data_buffer     : {} palign(128)    > DDR
     .boardcfg_data   : {} align(4)       > DDR
 
+#ifdef MCU1_0_LPM_CTX_BUFF
+    .ctx_buffer (NOLOAD) : { . = . + 256K; } palign(128) > MCU1_0_LPM_CTX_BUFF
+#endif
+
     GROUP {
         .bss:    {} palign(4)   /* This is where uninitialized globals go */
         RUN_START(__BSS_START)
@@ -124,12 +129,13 @@ MEMORY
     R5F_TCMB_VEC   (RWIX)      : ORIGIN = 0x41010000 LENGTH = 0x00000040
     R5F_TCMB       (RWIX)      : ORIGIN = 0x41010040 LENGTH = 0x00007FC0
 
-    /* DDR for DM R5F code/data [ size 29 MiB ] */
+    /* DDR for DM R5F code/data [ size 29 MiB ??? ] */
     DDR_SECTION     : ORIGIN = 0xA0200000,      LENGTH = 0x800000       /* App Image is loaded here by SBL for validation */
-    DDR             : ORIGIN = 0xA0A00000,      LENGTH = 0x700000
+    DDR             : ORIGIN = 0xA0A00000,      LENGTH = 0x6C0000
 
     DDR_IPC_VRING_LINUX           : ORIGIN = 0xA0000000, LENGTH = 0x100000   /* IPC VRING with Linux */
     DDR_IPC_RESOURCE_TABLE_LINUX  : ORIGIN = 0xA0100000, LENGTH = 0x400      /* For resource table   */
     DDR_IPC_TRACE_LINUX           : ORIGIN = 0xA0100400, LENGTH = 0xFFC00    /* IPC trace buffer     */
+    MCU1_0_LPM_CTX_BUFF (RW)      : ORIGIN = 0xA10C0000, LENGTH = 0x40000    /* LPM save addr */
     DDR_IPC_VRING_RTOS            : ORIGIN = 0xA5000000, LENGTH = 0x1C00000   /* IPC VRING for RTOS/NoRTOS */
 }
