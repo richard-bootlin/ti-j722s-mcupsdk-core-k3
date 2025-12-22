@@ -11,6 +11,7 @@ const files_r5f = {
         "sciclient_dkek.c",
         "sciclient_rm_irq.c",
         "sciclient_boardcfg.c",
+        "sciclient_lpm.c",
         "sciclient_procboot.c",
         "sciclient_secureProxyCfg.c",
         "sciclient_secureproxy.c",
