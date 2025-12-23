@@ -32,6 +32,8 @@ help:
 	@echo  $(MAKE) -s -f makefile.j722s examples-clean # delete's tmp files for current profile
 	@echo  $(MAKE) -s -f makefile.j722s examples-scrub # delete's all tmp files and folders for all profiles
 	@echo  .
+	@echo  $(MAKE) -s -f makefile.j722s s2r # rebuild suspend2ram header file
+	@echo  .
 	@echo  Library build targets,
 	@echo  ======================
 	@echo  $(MAKE) -s -f makefile.j722s board_r5f.ti-arm-clang board_c75x.ti-c7000
@@ -338,6 +340,8 @@ $(BUILD_COMBO_rm_pm_hal):
 $(BUILD_COMBO_rm_pm_hal_sbl):
 	$(MAKE) -C source/drivers/device_manager/rm_pm_hal/sbl -f makefile.j722s.$(subst rm_pm_hal_sbl_,,$@) all
 
+s2r:
+	$(MAKE) -C source/drivers/device_manager/s2r -f makefile.j722s all
 
 # Various Component Clean Targets
 BUILD_COMBO_CLEAN_board = board_r5f.ti-arm-clang_clean board_c75x.ti-c7000_clean
@@ -2730,6 +2734,7 @@ host-emu-scrub:
 .PHONY: examples examples-clean examples-scrub
 .PHONY: examples-private examples-private-clean examples-private-scrub
 .PHONY: sbl sbl-clean sbl-scrub
+.PHONY: s2r
 .PHONY: $(BUILD_COMBO_ALL) $(BUILD_COMBO_CLEAN_ALL) $(BUILD_COMBO_SCRUB_ALL)
 .PHONY: $(BUILD_COMBO_EXAMPLE_ALL) $(BUILD_COMBO_EXAMPLE_CLEAN_ALL) $(BUILD_COMBO_EXAMPLE_SCRUB_ALL)
 .PHONY: $(BUILD_COMBO_EXAMPLE_PRIVATE_ALL) $(BUILD_COMBO_EXAMPLE_PRIVATE_CLEAN_ALL) $(BUILD_COMBO_EXAMPLE_PRIVATE_SCRUB_ALL)
