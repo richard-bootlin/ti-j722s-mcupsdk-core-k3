@@ -111,6 +111,9 @@ examples-scrub:
 help:
 	$(MAKE) -C . -f makefile.$(DEVICE) -s help PROFILE=$(PROFILE)
 
+s2r:
+	$(MAKE) -C . -f makefile.$(DEVICE) $@ PROFILE=$(PROFILE)
+
 sbl:
 	$(MAKE) -C . -f makefile.$(DEVICE) sbl PROFILE=$(PROFILE)
 
