@@ -38,68 +38,15 @@
  *
  */
 
-#if 0
-#include <stdint.h>
-#include <ti/drv/sciclient/sciclient.h>
-#include <ti/drv/sciclient/src/sciclient/sciclient_s2r.h>
-#include <ti/csl/csl_types.h>
-#include <osal_hwi.h>
-
-#define K3_LPM_DDR_SAVE_TIFS_CONTEXT 0xac030000ULL
-
-int32_t Sciclient_prepareSleep(uint32_t *msg_recv)
-{
-    struct tisci_msg_prepare_sleep_req *req =
-        (struct tisci_msg_prepare_sleep_req *) msg_recv;
-    int32_t ret = EINVAL;
-
-    /* Only DM_MANAGED mode is supported for now */
-    if (req->mode == TISCI_MSG_VALUE_SLEEP_MODE_DM_MANAGED) {
-        /*
-	 * This message will be forwarded to TIFS,
-	 * with the address used to save its context
-	 * and the next LPM state
-	 */
-        ret = CSL_PASS;
-        req->mode = TISCI_MSG_VALUE_SLEEP_MODE_SOC_OFF;
-        req->ctx_lo = K3_LPM_DDR_SAVE_TIFS_CONTEXT & 0xFFFFFFFFULL;
-        req->ctx_hi = K3_LPM_DDR_SAVE_TIFS_CONTEXT >> 32;
-    }
-
-    return ret;
-}
-
-int32_t Sciclient_enterSleep(uint32_t *msg_recv)
-{
-    int32_t ret = -1;
-    struct tisci_msg_enter_sleep_req *req =
-        (struct tisci_msg_enter_sleep_req *) msg_recv;
-
-    uint8_t mode = req->mode;
-
-    if (mode != TISCI_MSG_VALUE_SLEEP_MODE_SOC_OFF)
-    {
-        ret = EINVAL;
-    }
-    else
-    {
-        (void)osal_hwip_disable();
-
-        S2R_goRetention();
-        /* Never reach this point */
-    }
-
-    return ret;
-}
-#endif
-
-#include <types/errno.h>
-#include <types/short_types.h>
+#include <drivers/hw_include/j722s/cslr_wkup_r5fss0_baseaddress.h>
+#include <tisci/tisci_protocol.h>
 #include <tisci/lpm/tisci_lpm.h>
 #include <lib/trace_protocol.h>
-#include <tisci/tisci_protocol.h>
+#include <types/short_types.h>
+#include <types/errno.h>
 #include <lib/trace.h>
-#include <drivers/hw_include/j722s/cslr_wkup_r5fss0_baseaddress.h>
+#include <osal_hwi.h>
+#include "sciclient_s2r.h"
 
 s32 dm_prepare_sleep_handler(u32 *msg_recv)
 {
@@ -121,9 +68,12 @@ s32 dm_enter_sleep_handler(u32 *msg_recv)
 	/* Check if the input mode is valid */
 	if (mode != TISCI_MSG_VALUE_SLEEP_MODE_SOC_OFF) {
 		ret = -EINVAL;
-	}
+	} else {
+		(void)osal_hwip_disable();
 
-	/* TODO */
+		S2R_goRetention();
+		/* Never reach this point */
+	}
 
 	return ret;
 }
