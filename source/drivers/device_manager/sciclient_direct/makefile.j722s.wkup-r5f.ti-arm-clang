@@ -52,6 +52,7 @@ INCLUDES_common := \
     -I../rm_pm_hal/rm_pm_hal_src/include/soc/j722s \
     -I../../hw_include/cslr.h \
     -I../priv \
+    -I../s2r \
     -I../ \
     -I./ \
 
