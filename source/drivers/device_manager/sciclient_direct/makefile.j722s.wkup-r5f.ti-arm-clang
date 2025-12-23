@@ -27,9 +27,13 @@ FILES_common := \
     sciclient_boardcfg.c \
     sciclient_lpm.c \
     sciclient_procboot.c \
+    sciclient_s2r.c \
     sciclient_secureProxyCfg.c \
     sciclient_secureproxy.c \
     uart_print.c \
+
+ASMFILES_common := \
+    csl_arm_r5.S \
 
 FILES_PATH_common = \
     . \
@@ -46,6 +50,10 @@ INCLUDES_common := \
     -I../rm_pm_hal/rm_pm_hal_src/rm \
     -I../rm_pm_hal/rm_pm_hal_src/rm/include \
     -I../rm_pm_hal/rm_pm_hal_src/include/soc/j722s \
+    -I../../hw_include/cslr.h \
+    -I../priv \
+    -I../ \
+    -I./ \
 
 DEFINES_common := \
     -DSOC_J722S \
