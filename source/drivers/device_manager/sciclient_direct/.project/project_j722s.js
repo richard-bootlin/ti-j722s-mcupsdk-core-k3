@@ -13,11 +13,19 @@ const files_r5f = {
         "sciclient_boardcfg.c",
         "sciclient_lpm.c",
         "sciclient_procboot.c",
+        "sciclient_s2r.c",
         "sciclient_secureProxyCfg.c",
         "sciclient_secureproxy.c",
         "uart_print.c",
     ]
 };
+
+const asmfiles_r5f = {
+    common: [
+        "csl_arm_r5.S"
+    ],
+};
+
 
 const includes_r5f = {
     common: [
@@ -29,6 +37,10 @@ const includes_r5f = {
         "../rm_pm_hal/rm_pm_hal_src/rm",
         "../rm_pm_hal/rm_pm_hal_src/rm/include",
         "../rm_pm_hal/rm_pm_hal_src/include/soc/j722s",
+	"../../hw_include/cslr.h",
+	"../priv",
+	"../",
+	"./",
     ],
 };
 
@@ -102,6 +114,7 @@ function getComponentBuildProperty(buildOption) {
         build_property.filedirs = filedirs_r5f;
         build_property.defines = defines_r5f;
         build_property.cflags = cflags;
+        build_property.asmfiles = asmfiles_r5f;
     }
 
     return build_property;
