@@ -4,6 +4,7 @@ const component_file_list = [
     /* Libraries */
     "source/board/.project/project.js",
     "source/drivers/.project/project.js",
+    "source/drivers/device_manager/s2r/.project/project.js",
     "source/drivers/device_manager/sciclient_direct/.project/project.js",
     "source/drivers/device_manager/sciclient_direct/sbl/.project/project.js",
     "source/drivers/device_manager/sciserver/.project/project.js",
