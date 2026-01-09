@@ -32,6 +32,8 @@ help:
 	@echo  $(MAKE) -s -f makefile.j722s examples-clean # delete's tmp files for current profile
 	@echo  $(MAKE) -s -f makefile.j722s examples-scrub # delete's all tmp files and folders for all profiles
 	@echo  .
+	@echo  $(MAKE) -s -f makefile.j722s s2r # rebuild suspend2ram header file
+	@echo  .
 	@echo  Library build targets,
 	@echo  ======================
 	@echo  $(MAKE) -s -f makefile.j722s doxy_samples_r5f.ti-arm-clang
