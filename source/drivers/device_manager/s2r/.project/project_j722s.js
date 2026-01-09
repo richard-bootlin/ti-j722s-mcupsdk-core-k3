@@ -61,7 +61,6 @@ function getComponentBuildProperty(buildOption) {
         build_property.filedirs = filedirs_r5f;
         build_property.defines = defines_r5f;
         build_property.cflags = cflags;
-        build_property.asmfiles = asmfiles_r5f;
     }
 
     return build_property;
