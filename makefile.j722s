@@ -38,6 +38,7 @@ help:
 	@echo  ======================
 	@echo  $(MAKE) -s -f makefile.j722s board_r5f.ti-arm-clang board_c75x.ti-c7000
 	@echo  $(MAKE) -s -f makefile.j722s drivers_mcu-r5f.ti-arm-clang drivers_wkup-r5f.ti-arm-clang drivers_main-r5f.ti-arm-clang drivers_c75ss0-0.ti-c7000 drivers_c75ss1-0.ti-c7000
+	@echo  $(MAKE) -s -f makefile.j722s s2r_wkup-r5f.ti-arm-clang
 	@echo  $(MAKE) -s -f makefile.j722s sciclient_direct_wkup-r5f.ti-arm-clang
 	@echo  $(MAKE) -s -f makefile.j722s sciclient_direct_sbl_wkup-r5f.ti-arm-clang
 	@echo  $(MAKE) -s -f makefile.j722s sciserver_wkup-r5f.ti-arm-clang
@@ -56,6 +57,7 @@ help:
 	@echo  ======================
 	@echo  $(MAKE) -s -f makefile.j722s board_r5f.ti-arm-clang_clean board_c75x.ti-c7000_clean
 	@echo  $(MAKE) -s -f makefile.j722s drivers_mcu-r5f.ti-arm-clang_clean drivers_wkup-r5f.ti-arm-clang_clean drivers_main-r5f.ti-arm-clang_clean drivers_c75ss0-0.ti-c7000_clean drivers_c75ss1-0.ti-c7000_clean
+	@echo  $(MAKE) -s -f makefile.j722s s2r_wkup-r5f.ti-arm-clang_clean
 	@echo  $(MAKE) -s -f makefile.j722s sciclient_direct_wkup-r5f.ti-arm-clang_clean
 	@echo  $(MAKE) -s -f makefile.j722s sciclient_direct_sbl_wkup-r5f.ti-arm-clang_clean
 	@echo  $(MAKE) -s -f makefile.j722s sciserver_wkup-r5f.ti-arm-clang_clean
@@ -261,6 +263,7 @@ help:
 # Various Component Targets
 BUILD_COMBO_board = board_r5f.ti-arm-clang board_c75x.ti-c7000
 BUILD_COMBO_drivers = drivers_mcu-r5f.ti-arm-clang drivers_wkup-r5f.ti-arm-clang drivers_main-r5f.ti-arm-clang drivers_c75ss0-0.ti-c7000 drivers_c75ss1-0.ti-c7000
+BUILD_COMBO_s2r = s2r_wkup-r5f.ti-arm-clang
 BUILD_COMBO_sciclient_direct = sciclient_direct_wkup-r5f.ti-arm-clang
 BUILD_COMBO_sciclient_direct_sbl = sciclient_direct_sbl_wkup-r5f.ti-arm-clang
 BUILD_COMBO_sciserver = sciserver_wkup-r5f.ti-arm-clang
@@ -276,7 +279,7 @@ BUILD_COMBO_rm_pm_hal = rm_pm_hal_wkup-r5f.ti-arm-clang
 BUILD_COMBO_rm_pm_hal_sbl = rm_pm_hal_sbl_wkup-r5f.ti-arm-clang
 
 # Combine all Components
-BUILD_COMBO_ALL = $(BUILD_COMBO_board) $(BUILD_COMBO_drivers) $(BUILD_COMBO_sciclient_direct) $(BUILD_COMBO_sciclient_direct_sbl) $(BUILD_COMBO_sciserver) $(BUILD_COMBO_self_reset) $(BUILD_COMBO_dmautils) $(BUILD_COMBO_freertos_fat) $(BUILD_COMBO_nortos) $(BUILD_COMBO_freertos) $(BUILD_COMBO_sdl) $(BUILD_COMBO_safety_checkers) $(BUILD_COMBO_rm_pm_hal) $(BUILD_COMBO_rm_pm_hal_sbl)
+BUILD_COMBO_ALL = $(BUILD_COMBO_board) $(BUILD_COMBO_drivers) $(BUILD_COMBO_s2r) $(BUILD_COMBO_sciclient_direct) $(BUILD_COMBO_sciclient_direct_sbl) $(BUILD_COMBO_sciserver) $(BUILD_COMBO_self_reset) $(BUILD_COMBO_dmautils) $(BUILD_COMBO_freertos_fat) $(BUILD_COMBO_nortos) $(BUILD_COMBO_freertos) $(BUILD_COMBO_sdl) $(BUILD_COMBO_safety_checkers) $(BUILD_COMBO_rm_pm_hal) $(BUILD_COMBO_rm_pm_hal_sbl)
 
 # Combine all External Components
 BUILD_COMBO_EXTERNAL_ALL =
@@ -300,6 +303,9 @@ $(BUILD_COMBO_board):
 
 $(BUILD_COMBO_drivers):
 	$(MAKE) -C source/drivers -f makefile.j722s.$(subst drivers_,,$@) all
+
+$(BUILD_COMBO_s2r):
+	$(MAKE) -C source/drivers/device_manager/s2r -f makefile.j722s.$(subst s2r_,,$@) all
 
 $(BUILD_COMBO_sciclient_direct):
 	$(MAKE) -C source/drivers/device_manager/sciclient_direct -f makefile.j722s.$(subst sciclient_direct_,,$@) all
@@ -340,12 +346,11 @@ $(BUILD_COMBO_rm_pm_hal):
 $(BUILD_COMBO_rm_pm_hal_sbl):
 	$(MAKE) -C source/drivers/device_manager/rm_pm_hal/sbl -f makefile.j722s.$(subst rm_pm_hal_sbl_,,$@) all
 
-s2r:
-	$(MAKE) -C source/drivers/device_manager/s2r -f makefile.j722s all
 
 # Various Component Clean Targets
 BUILD_COMBO_CLEAN_board = board_r5f.ti-arm-clang_clean board_c75x.ti-c7000_clean
 BUILD_COMBO_CLEAN_drivers = drivers_mcu-r5f.ti-arm-clang_clean drivers_wkup-r5f.ti-arm-clang_clean drivers_main-r5f.ti-arm-clang_clean drivers_c75ss0-0.ti-c7000_clean drivers_c75ss1-0.ti-c7000_clean
+BUILD_COMBO_CLEAN_s2r = s2r_wkup-r5f.ti-arm-clang_clean
 BUILD_COMBO_CLEAN_sciclient_direct = sciclient_direct_wkup-r5f.ti-arm-clang_clean
 BUILD_COMBO_CLEAN_sciclient_direct_sbl = sciclient_direct_sbl_wkup-r5f.ti-arm-clang_clean
 BUILD_COMBO_CLEAN_sciserver = sciserver_wkup-r5f.ti-arm-clang_clean
@@ -361,7 +366,7 @@ BUILD_COMBO_CLEAN_rm_pm_hal = rm_pm_hal_wkup-r5f.ti-arm-clang_clean
 BUILD_COMBO_CLEAN_rm_pm_hal_sbl = rm_pm_hal_sbl_wkup-r5f.ti-arm-clang_clean
 
 # Combine all Components Clean
-BUILD_COMBO_CLEAN_ALL = $(BUILD_COMBO_CLEAN_board) $(BUILD_COMBO_CLEAN_drivers) $(BUILD_COMBO_CLEAN_sciclient_direct) $(BUILD_COMBO_CLEAN_sciclient_direct_sbl) $(BUILD_COMBO_CLEAN_sciserver) $(BUILD_COMBO_CLEAN_self_reset) $(BUILD_COMBO_CLEAN_dmautils) $(BUILD_COMBO_CLEAN_freertos_fat) $(BUILD_COMBO_CLEAN_nortos) $(BUILD_COMBO_CLEAN_freertos) $(BUILD_COMBO_CLEAN_safertos) $(BUILD_COMBO_CLEAN_sdl) $(BUILD_COMBO_CLEAN_safety_checkers) $(BUILD_COMBO_CLEAN_rm_pm_hal) $(BUILD_COMBO_CLEAN_rm_pm_hal_sbl)
+BUILD_COMBO_CLEAN_ALL = $(BUILD_COMBO_CLEAN_board) $(BUILD_COMBO_CLEAN_drivers) $(BUILD_COMBO_CLEAN_s2r) $(BUILD_COMBO_CLEAN_sciclient_direct) $(BUILD_COMBO_CLEAN_sciclient_direct_sbl) $(BUILD_COMBO_CLEAN_sciserver) $(BUILD_COMBO_CLEAN_self_reset) $(BUILD_COMBO_CLEAN_dmautils) $(BUILD_COMBO_CLEAN_freertos_fat) $(BUILD_COMBO_CLEAN_nortos) $(BUILD_COMBO_CLEAN_freertos) $(BUILD_COMBO_CLEAN_safertos) $(BUILD_COMBO_CLEAN_sdl) $(BUILD_COMBO_CLEAN_safety_checkers) $(BUILD_COMBO_CLEAN_rm_pm_hal) $(BUILD_COMBO_CLEAN_rm_pm_hal_sbl)
 
 # Combine all External Components Clean
 BUILD_COMBO_EXTERNAL_CLEAN_ALL =
@@ -380,6 +385,9 @@ $(BUILD_COMBO_CLEAN_board):
 
 $(BUILD_COMBO_CLEAN_drivers):
 	$(MAKE) -C source/drivers -f makefile.j722s.$(subst drivers_,,$(subst _clean,,$@)) clean
+
+$(BUILD_COMBO_CLEAN_s2r):
+	$(MAKE) -C source/drivers/device_manager/s2r -f makefile.j722s.$(subst s2r_,,$(subst _clean,,$@)) clean
 
 $(BUILD_COMBO_CLEAN_sciclient_direct):
 	$(MAKE) -C source/drivers/device_manager/sciclient_direct -f makefile.j722s.$(subst sciclient_direct_,,$(subst _clean,,$@)) clean
@@ -424,6 +432,7 @@ $(BUILD_COMBO_CLEAN_rm_pm_hal_sbl):
 # Various Component Scrub Targets
 BUILD_COMBO_SCRUB_board = board_r5f.ti-arm-clang_scrub board_c75x.ti-c7000_scrub
 BUILD_COMBO_SCRUB_drivers = drivers_mcu-r5f.ti-arm-clang_scrub drivers_wkup-r5f.ti-arm-clang_scrub drivers_main-r5f.ti-arm-clang_scrub drivers_c75ss0-0.ti-c7000_scrub drivers_c75ss1-0.ti-c7000_scrub
+BUILD_COMBO_SCRUB_s2r = s2r_wkup-r5f.ti-arm-clang_scrub
 BUILD_COMBO_SCRUB_sciclient_direct = sciclient_direct_wkup-r5f.ti-arm-clang_scrub
 BUILD_COMBO_SCRUB_sciclient_direct_sbl = sciclient_direct_sbl_wkup-r5f.ti-arm-clang_scrub
 BUILD_COMBO_SCRUB_sciserver = sciserver_wkup-r5f.ti-arm-clang_scrub
@@ -439,7 +448,7 @@ BUILD_COMBO_SCRUB_rm_pm_hal = rm_pm_hal_wkup-r5f.ti-arm-clang_scrub
 BUILD_COMBO_SCRUB_rm_pm_hal_sbl = rm_pm_hal_sbl_wkup-r5f.ti-arm-clang_scrub
 
 # Combine all Components Scrub Targets
-BUILD_COMBO_SCRUB_ALL = $(BUILD_COMBO_SCRUB_board) $(BUILD_COMBO_SCRUB_drivers) $(BUILD_COMBO_SCRUB_sciclient_direct) $(BUILD_COMBO_SCRUB_sciclient_direct_sbl) $(BUILD_COMBO_SCRUB_sciserver) $(BUILD_COMBO_SCRUB_self_reset) $(BUILD_COMBO_SCRUB_dmautils) $(BUILD_COMBO_SCRUB_freertos_fat) $(BUILD_COMBO_SCRUB_nortos) $(BUILD_COMBO_SCRUB_freertos) $(BUILD_COMBO_SCRUB_safertos) $(BUILD_COMBO_SCRUB_sdl) $(BUILD_COMBO_SCRUB_safety_checkers) $(BUILD_COMBO_SCRUB_rm_pm_hal) $(BUILD_COMBO_SCRUB_rm_pm_hal_sbl)
+BUILD_COMBO_SCRUB_ALL = $(BUILD_COMBO_SCRUB_board) $(BUILD_COMBO_SCRUB_drivers) $(BUILD_COMBO_SCRUB_s2r) $(BUILD_COMBO_SCRUB_sciclient_direct) $(BUILD_COMBO_SCRUB_sciclient_direct_sbl) $(BUILD_COMBO_SCRUB_sciserver) $(BUILD_COMBO_SCRUB_self_reset) $(BUILD_COMBO_SCRUB_dmautils) $(BUILD_COMBO_SCRUB_freertos_fat) $(BUILD_COMBO_SCRUB_nortos) $(BUILD_COMBO_SCRUB_freertos) $(BUILD_COMBO_SCRUB_safertos) $(BUILD_COMBO_SCRUB_sdl) $(BUILD_COMBO_SCRUB_safety_checkers) $(BUILD_COMBO_SCRUB_rm_pm_hal) $(BUILD_COMBO_SCRUB_rm_pm_hal_sbl)
 
 # Combine all External Components Scrub Targets
 BUILD_COMBO_EXTERNAL_SCRUB_ALL =
@@ -458,6 +467,9 @@ $(BUILD_COMBO_SCRUB_board):
 
 $(BUILD_COMBO_SCRUB_drivers):
 	$(MAKE) -C source/drivers -f makefile.j722s.$(subst drivers_,,$(subst _scrub,,$@)) scrub
+
+$(BUILD_COMBO_SCRUB_s2r):
+	$(MAKE) -C source/drivers/device_manager/s2r -f makefile.j722s.$(subst s2r_,,$(subst _scrub,,$@)) scrub
 
 $(BUILD_COMBO_SCRUB_sciclient_direct):
 	$(MAKE) -C source/drivers/device_manager/sciclient_direct -f makefile.j722s.$(subst sciclient_direct_,,$(subst _scrub,,$@)) scrub
@@ -2734,7 +2746,6 @@ host-emu-scrub:
 .PHONY: examples examples-clean examples-scrub
 .PHONY: examples-private examples-private-clean examples-private-scrub
 .PHONY: sbl sbl-clean sbl-scrub
-.PHONY: s2r
 .PHONY: $(BUILD_COMBO_ALL) $(BUILD_COMBO_CLEAN_ALL) $(BUILD_COMBO_SCRUB_ALL)
 .PHONY: $(BUILD_COMBO_EXAMPLE_ALL) $(BUILD_COMBO_EXAMPLE_CLEAN_ALL) $(BUILD_COMBO_EXAMPLE_SCRUB_ALL)
 .PHONY: $(BUILD_COMBO_EXAMPLE_PRIVATE_ALL) $(BUILD_COMBO_EXAMPLE_PRIVATE_CLEAN_ALL) $(BUILD_COMBO_EXAMPLE_PRIVATE_SCRUB_ALL)
