@@ -66,6 +66,8 @@ help:
 	@echo  $(MAKE) -s -f makefile.`device` examples-clean # delete's tmp files for current profile
 	@echo  $(MAKE) -s -f makefile.`device` examples-scrub # delete's all tmp files and folders for all profiles
 	@echo  .
+	@echo  $(MAKE) -s -f makefile.j722s s2r # rebuild suspend2ram header file
+	@echo  .
 	@echo  Library build targets,
 	@echo  ======================
 % for (component of args.component_list) {
