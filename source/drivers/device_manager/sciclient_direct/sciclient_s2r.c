@@ -50,6 +50,7 @@
 #include <kernel/dpl/ClockP.h>
 #include "csl_arm_r5.h"
 #include "sciclient_s2r.h"
+#include "lpm_s2r.h"
 
 static void asm_function(void);
 
@@ -76,9 +77,6 @@ static void asm_function(void);
 /*                            Global Variables                                */
 /* ========================================================================== */
 
-/* TODO */
-#define LPM_SRAM_S2R { 0 };
-#define LPM_SRAM_S2R_SIZE_IN_BYTES 0
 u32 lpm_sram_s2r[] = LPM_SRAM_S2R;
 
 /* ========================================================================== */
