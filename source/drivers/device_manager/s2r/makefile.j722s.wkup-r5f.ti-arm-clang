@@ -45,6 +45,7 @@ CFLAGS_common := \
     -nostdlib \
     -fomit-frame-pointer \
     -fno-builtin \
+    -static
 
 CFLAGS_cpp_common := \
     -Wno-c99-designator \
