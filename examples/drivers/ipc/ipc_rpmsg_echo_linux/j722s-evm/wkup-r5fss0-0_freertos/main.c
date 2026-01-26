@@ -85,7 +85,7 @@ void main_thread(void *args)
     sciServer_init();
 
     /* Close UART as Drivers_open() inside ipc_rpmsg_echo_main() opens the UART again */
-    Drivers_uartClose();
+//    Drivers_uartClose();
 
     ipc_rpmsg_echo_main(NULL);
 
