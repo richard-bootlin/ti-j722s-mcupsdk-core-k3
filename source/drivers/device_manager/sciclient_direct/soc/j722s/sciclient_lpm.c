@@ -47,6 +47,7 @@
 #include <lib/trace.h>
 #include <osal_hwi.h>
 #include "sciclient_s2r.h"
+#include "dbg_uart.c"
 
 s32 dm_prepare_sleep_handler(u32 *msg_recv)
 {
@@ -62,6 +63,7 @@ s32 dm_enter_sleep_handler(u32 *msg_recv)
 	struct tisci_msg_enter_sleep_req *req =
 		(struct tisci_msg_enter_sleep_req *) msg_recv;
 
+dbg_line(__func__);
 	s32 ret = SUCCESS;
 	u8 mode = req->mode;
 

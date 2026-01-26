@@ -32,6 +32,7 @@
 
 #include <drivers/device_manager/sciserver/sciserver_init.h>
 #include <drivers/device_manager/sciclient.h>
+#include "dbg_uart.c"
 
 /** \brief Task Ids to be used for the user and DM tasks */
 enum Sciserver_TaskIds {
@@ -148,5 +149,6 @@ void sciServer_init(void)
     }
 #endif
 
+    dbg_putc('@');
     return;
 }

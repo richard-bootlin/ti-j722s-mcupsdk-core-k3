@@ -46,6 +46,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "dbg_uart.c"
+
 /* This example shows message exchange bewteen Linux and RTOS/NORTOS cores.
  * This example also does message exchange between the RTOS/NORTOS cores themselves
  *
