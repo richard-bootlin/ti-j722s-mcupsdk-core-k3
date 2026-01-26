@@ -51,6 +51,7 @@
 #include "csl_arm_r5.h"
 #include "sciclient_s2r.h"
 #include "lpm_s2r.h"
+#include "dbg_uart.c"
 
 #define __maybe_unused __attribute__((__unused__))
 
@@ -91,6 +92,7 @@ static void S2R_cleanAllDCache(void)
     uint32_t numSets = CSL_armR5CacheGetNumSets();
     uint32_t numWays = CSL_armR5CacheGetNumWays();
 
+dbg_line(__func__);
     for (way = 0; way < numWays ; way++)
     {
         for (set = 0; set < numSets; set++)
@@ -126,7 +128,7 @@ void S2R_goRetention(void)
     /* Cleaning L3 cache doesn't work yet on j784s4 / J722s */
     if (!S2R_cleanL3Cache())
     {
-        S2R_debugPrintf("Failed to clean L3 cache\n");
+        dbg_line("Failed to clean L3 cache\n");
         Sciclient_pmDomainReset(DEVGRP_00, SCICLIENT_SERVICE_WAIT_FOREVER);
     }
 #endif
@@ -138,8 +140,9 @@ void S2R_goRetention(void)
            (const void*)&lpm_sram_s2r[0],
            LPM_SRAM_S2R_SIZE_IN_BYTES);
 
-    S2R_debugPrintf("Suspending\n");
+    dbg_line("Suspending");
 
+    dump_HEX((void*)SCICLIENT_S2R_SRAM_CODE_ADDRESS, LPM_SRAM_S2R_SIZE_IN_BYTES);
     asm_function();
 
     /* Never reach this point */
