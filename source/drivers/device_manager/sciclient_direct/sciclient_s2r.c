@@ -52,6 +52,8 @@
 #include "sciclient_s2r.h"
 #include "lpm_s2r.h"
 
+#define __maybe_unused __attribute__((__unused__))
+
 static void asm_function(void);
 
 #define CSL_COMPUTE_CLUSTER0_MSMC_CFGS0_BASE (0x6e000000UL)
@@ -98,7 +100,7 @@ static void S2R_cleanAllDCache(void)
     }
 }
 
-static bool S2R_cleanL3Cache(void)
+__maybe_unused static bool S2R_cleanL3Cache(void)
 {
     uint64_t t;
 
@@ -120,8 +122,8 @@ static bool S2R_cleanL3Cache(void)
 
 void S2R_goRetention(void)
 {
-#if !defined(SOC_J784S4)
-    /* Cleaning L3 cache doesn't work yet on j784s4 */
+#if !defined(SOC_J784S4) && !defined(SOC_J722S)
+    /* Cleaning L3 cache doesn't work yet on j784s4 / J722s */
     if (!S2R_cleanL3Cache())
     {
         S2R_debugPrintf("Failed to clean L3 cache\n");
