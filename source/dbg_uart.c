@@ -71,6 +71,29 @@ static void dbg_puts(const char *str)
 __maybe_unused static void dbg_line(const char *str)
 {
     dbg_puts(str);
+    dbg_putc('\r');
     dbg_putc('\n');
 }
 
+__maybe_unused static void dump_HEX(void *addr, unsigned int size)
+{
+    const char *const hex = "0123456789abcdef";
+    unsigned char *c = addr;
+
+    for (unsigned int i = 1; i <= size; i++)
+    {
+        if (*c < 0x10) {
+            dbg_putc('0');
+            dbg_putc(hex[*c]);
+        } else {
+            dbg_putc(hex[(*c >> 4) & 0xf]);
+            dbg_putc(hex[*c & 0xf]);
+        }
+        if ((i % 16) == 0)
+            dbg_puts("\r\n");
+        else
+            dbg_putc(' ');
+        c++;
+
+    }
+}
