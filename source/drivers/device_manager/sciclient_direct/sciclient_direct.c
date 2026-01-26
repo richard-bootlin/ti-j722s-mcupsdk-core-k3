@@ -40,9 +40,6 @@
 /*                             Include Files                                  */
 /* ========================================================================== */
 
-#ifndef CONFIG_TRACE
-#define CONFIG_TRACE
-#endif
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
@@ -55,7 +52,6 @@
 #include <rm.h>
 #include <lpm_handler.h>
 #include <fw_caps.h>
-#include <lib/trace.h>
 /* Sciclient APIs are kept in the end of the include list to make sure the
  * RM and PM HAL typedefs are used.
  */
@@ -458,7 +454,6 @@ int32_t Sciclient_service (const Sciclient_ReqPrm_t *pReqPrm,
             case TISCI_MSG_LPM_GET_NEXT_SYS_MODE:
             case TISCI_MSG_LPM_GET_NEXT_HOST_STATE:
             case TISCI_MSG_SET_IO_ISOLATION:
-		trace_print_arg(0, (const u8 *)"msg:", msgType);
                 memcpy(message, pReqPrm->pReqPayload, pReqPrm->reqPayloadSize);
                 /* Processing enter sleep message locally */
                 ret = Sciclient_ProcessPmMessage(pReqPrm->flags,message);
