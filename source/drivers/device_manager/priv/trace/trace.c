@@ -90,7 +90,6 @@ static const uint16_t trace_debug_chan_to_boardcfg[TRACE_DEBUG_CHANNEL_COUNT] = 
     [TRACE_DEBUG_CHANNEL_PM]        = TISCI_BOARDCFG_TRACE_SRC_PM,
     [TRACE_DEBUG_CHANNEL_RM]        = TISCI_BOARDCFG_TRACE_SRC_RM,
     [TRACE_DEBUG_CHANNEL_SEC]       = TISCI_BOARDCFG_TRACE_SRC_SEC,
-    [TRACE_DEBUG_CHANNEL_LPM]       = TISCI_BOARDCFG_TRACE_SRC_LPM,
 };
 
 /* ========================================================================== */

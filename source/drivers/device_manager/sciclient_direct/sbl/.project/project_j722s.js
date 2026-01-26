@@ -56,7 +56,7 @@ const defines_r5f = {
         "CONFIG_DM_BUILD",
         "CONFIG_TRACE",
         "CONFIG_TRACE_BUFFER",
-        "CONFIG_TRACE_UART",
+      //  "CONFIG_TRACE_UART",
         "CONFIG_DEVICE_TYPE_GP",
     ],
 };
