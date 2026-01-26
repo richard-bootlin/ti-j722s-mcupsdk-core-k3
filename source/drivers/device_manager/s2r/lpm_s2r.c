@@ -39,6 +39,7 @@
  *
  */
 #include <stdint.h>
+#include "dbg_uart.c"
 
 // TODO: use a common include file for those:
 // was in source/drivers/device_manager/rm_pm_hal/rm_pm_hal_src/lpm/include/soc/am62px/baseaddress.h
@@ -73,12 +74,6 @@
 #define CDNS_DENALI_PHY_1369                                    0x5564U
 #define CDNS_DENALI_PHY_1369_PHY_UPDATE_MASK                    0x1U
 
-
-/* Debug */
-#define Lpm_debugFullPrintf(...) do {} while(0)
-#define Lpm_debugReadPmicA(...)  do {} while(0)
-#define Lpm_debugReadPmicB(...)  do {} while(0)
-void Lpm_debugPrintf(const char *pcString, ...) {}
 
 // TODO
 static void Lpm_cleanAllDCache(void)
@@ -148,6 +143,7 @@ static void Lpm_ddrEnterRetention(void)
 {
 	uint32_t val;
 
+    dbg_line(__func__);
 	Lpm_ddrUnlockPll(); //PLL_12
 
 	/* Unlock wkup_ctrl_mmr region 2 & 6 */
@@ -206,17 +202,17 @@ static void Lpm_ddrEnterRetention(void)
  */
 void Lpm_enterRetention(void)
 {
-	Lpm_debugPrintf("Lpm_enterRetention: Enter retention\n");
+	dbg_line("Lpm_enterRetention: Enter retention");
 
 	/* Make sure that nothing remains in cache before going to retention */
 	Lpm_cleanAllDCache();
 
 	Lpm_ddrEnterRetention();
-	Lpm_debugFullPrintf("Lpm_enterRetention: DDR retention done\n");
+	dbg_line("Lpm_enterRetention: DDR retention done");
 
 
 	// TODO Lpm_setupPmic();
-	Lpm_debugPrintf("Lpm_enterRetention: Done! Going to wait now \n");
+	dbg_line("Lpm_enterRetention: Done! Going to wait now");
 
 	while(1){};
 }
