@@ -44,6 +44,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include <drivers/device_manager/sciserver/sciserver_init.h>
+#include "dbg_uart.c"
 
 /* ========================================================================== */
 /*                           Macros & Typedefs                                */
@@ -85,8 +86,9 @@ void main_thread(void *args)
     sciServer_init();
 
     /* Close UART as Drivers_open() inside ipc_rpmsg_echo_main() opens the UART again */
-    Drivers_uartClose();
+//    Drivers_uartClose();
 
+    dbg_putc('@');
     ipc_rpmsg_echo_main(NULL);
 
     vTaskDelete(NULL);
