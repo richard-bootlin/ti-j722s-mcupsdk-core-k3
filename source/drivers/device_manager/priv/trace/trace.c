@@ -221,7 +221,7 @@ int32_t trace_init(void)
 {
     int32_t ret = CSL_PASS;
 
-    trace_set_print_level(TRACE_LEVEL_DEBUG);
+    trace_set_print_level(TRACE_LEVEL_INFO);
 
     return ret;
 }
