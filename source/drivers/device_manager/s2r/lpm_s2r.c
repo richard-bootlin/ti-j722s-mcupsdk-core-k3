@@ -85,6 +85,7 @@
  
 #endif
 
+#define DEBUG_ENABLED
 #ifdef DEBUG_ENABLED
 static inline void dbg_writel(unsigned int addr, unsigned int val)
 {
