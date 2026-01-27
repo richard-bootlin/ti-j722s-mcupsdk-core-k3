@@ -50,7 +50,7 @@ static void dbg_putc(unsigned char c)
     unsigned int base = WKUP_UART0_BASE;
 
     static int configured;
-    configured = 0;
+
     if (!configured)
     {
         dbg_writel(base + DBG_UART_LCR, 0x3 /* 8N1 */);
