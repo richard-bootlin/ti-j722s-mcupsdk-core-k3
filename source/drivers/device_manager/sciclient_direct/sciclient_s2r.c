@@ -142,7 +142,6 @@ void S2R_goRetention(void)
 
     dbg_line("Suspending");
 
-    dump_HEX((void*)SCICLIENT_S2R_SRAM_CODE_ADDRESS, LPM_SRAM_S2R_SIZE_IN_BYTES);
     asm_function();
 
     /* Never reach this point */
