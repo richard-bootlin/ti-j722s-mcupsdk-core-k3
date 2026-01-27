@@ -34,6 +34,7 @@ const cflags = {
     ],
     remove: [
         "-Wno-unused-function",
+        "-mthumb",
     ],
 };
 
