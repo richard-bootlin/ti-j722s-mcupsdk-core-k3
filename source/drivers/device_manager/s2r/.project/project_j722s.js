@@ -30,6 +30,7 @@ const cflags = {
 	    "-nostdlib",
 	    "-fomit-frame-pointer",
 	    "-fno-builtin",
+	    "-static",
     ],
     remove: [
         "-Wno-unused-function",
