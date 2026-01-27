@@ -39,6 +39,7 @@ const includes_r5f = {
         "../rm_pm_hal/rm_pm_hal_src/include/soc/j722s",
 	"../../hw_include/cslr.h",
 	"../priv",
+        "../s2r",
 	"../",
 	"./",
     ],
