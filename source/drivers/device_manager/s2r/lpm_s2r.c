@@ -129,22 +129,23 @@ void ctrlmmr_unlock(uint32_t base, uint8_t partition)
 	ctrlmmr_raw_writel(CTRLMMR_LOCK_KICK1_UNLOCK_VAL, addr + CTRLMMR_LOCK_KICK1);
 }
 
-static void Lpm_ddrUnlockPll(void)
-{
-	// defined in source/drivers/hw_include/j722s/cslr_main_pll_mmr.h
-#define CSL_MAIN_PLL_MMR_CFG_PLL12_LOCKKEY0 (0x0000C010U)
-#define CSL_MAIN_PLL_MMR_CFG_PLL12_LOCKKEY1 (0x0000C014U)
-#define CSL_PLL0_CFG_BASE (0x680000UL)
-    writel(CSL_PLL0_CFG_BASE + CSL_MAIN_PLL_MMR_CFG_PLL12_LOCKKEY0, CTRLMMR_LOCK_KICK0_UNLOCK_VAL);
-    writel(CSL_PLL0_CFG_BASE + CSL_MAIN_PLL_MMR_CFG_PLL12_LOCKKEY1, CTRLMMR_LOCK_KICK1_UNLOCK_VAL);
-}
-
 static void Lpm_ddrEnterRetention(void)
 {
-	uint32_t val;
+#define CDNS_DENALI_CTL_0                                       0x0000U
+#define CDNS_DENALI_CTL_0_DRAM_CLASS_MASK                       0x00000F00U
+#define CDNS_DENALI_CTL_0_DRAM_CLASS_SHIFT                      0x00000008U
+#define CDNS_DENALI_CTL_0_DRAM_CLASS_DDR4                       0xAU
+#define CDNS_DENALI_CTL_0_DRAM_CLASS_LPDDR4                     0xBU
+	uint32_t val, dram_class;
 
     dbg_line(__func__);
-	Lpm_ddrUnlockPll(); //PLL_12
+	val = readl(DDR_CTRL_BASE + CDNS_DENALI_CTL_0);
+	dram_class = (val & CDNS_DENALI_CTL_0_DRAM_CLASS_MASK) >>
+		     CDNS_DENALI_CTL_0_DRAM_CLASS_SHIFT;
+
+    if (dram_class == CDNS_DENALI_CTL_0_DRAM_CLASS_LPDDR4)
+        dbg_puts("LP");
+    dbg_line("DDR4");
 
 	/* Unlock wkup_ctrl_mmr region 2 & 6 */
 	ctrlmmr_unlock(WKUP_CTRL_MMR_BASE, 2); // same as Lpm_ddrUnlockWKUP(2)
