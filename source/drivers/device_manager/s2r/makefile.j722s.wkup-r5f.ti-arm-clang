@@ -37,7 +37,6 @@ CFLAGS_common := \
     -mcpu=cortex-r5 \
     -mfloat-abi=hard \
     -mfpu=vfpv3-d16 \
-    -mthumb \
     -Wall \
     -Werror \
     -g \
@@ -45,7 +44,7 @@ CFLAGS_common := \
     -nostdlib \
     -fomit-frame-pointer \
     -fno-builtin \
-    -static
+    -static \
 
 CFLAGS_cpp_common := \
     -Wno-c99-designator \
