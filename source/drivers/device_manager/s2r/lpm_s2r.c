@@ -39,8 +39,12 @@
  *
  */
 #include <stdint.h>
+#include <cslr_soc_baseaddress.h>
+#include <cslr_main_padcfg_ctrl_mmr.h>
+#include <cslr_i2c.h>
 #include "dbg_uart.c"
 
+#define Lpm_debugFullPrintf(...) do {} while(0)
 // TODO: use a common include file for those:
 // was in source/drivers/device_manager/rm_pm_hal/rm_pm_hal_src/lpm/include/soc/am62px/baseaddress.h
 #define DDR_CTRL_BASE                   (0x0f308000U)
@@ -194,6 +198,219 @@ static void Lpm_ddrEnterRetention(void)
 	writel(val, DDR_CTRL_BASE + CDNS_DENALI_CTL_158);
 }
 
+#define CSL_REG32_RD_OFF(p, off)    (CSL_REG32_RD_OFF_RAW( \
+                                        (volatile uint32_t *) (p), \
+                                        (uint32_t) (off)))
+#define CSL_REG32_WR_OFF(p, off, v) (CSL_REG32_WR_OFF_RAW( \
+                                        (volatile uint32_t *) (p), \
+                                        (uint32_t) (off), \
+                                        (uint32_t) (v)))
+#define CSL_WKUP_I2C0_CFG_RD(r)     CSL_REG32_RD_OFF(CSL_WKUP_I2C0_CFG_BASE, r)
+#define CSL_WKUP_I2C0_CFG_WR(r, v)  CSL_REG32_WR_OFF(CSL_WKUP_I2C0_CFG_BASE, r, v)
+#define CSL_WKUP_I2C0_CFG_SET(r, m) CSL_WKUP_I2C0_CFG_WR(r, CSL_WKUP_I2C0_CFG_RD(r) | m)
+#define CSL_WKUP_I2C0_CFG_CLR(r, m) CSL_WKUP_I2C0_CFG_WR(r, CSL_WKUP_I2C0_CFG_RD(r) & ~(m))
+
+#define CSL_WKUP_CTRL_MMR0_CFG0_RD(r)     CSL_REG32_RD_OFF(CSL_WKUP_CTRL_MMR0_CFG0_BASE, r)
+#define CSL_WKUP_CTRL_MMR0_CFG0_WR(r, v)  CSL_REG32_WR_OFF(CSL_WKUP_CTRL_MMR0_CFG0_BASE, r, v)
+#define CSL_WKUP_CTRL_MMR0_CFG0_SET(r, m) CSL_WKUP_CTRL_MMR0_CFG0_WR(r, CSL_WKUP_CTRL_MMR0_CFG0_RD(r) | m)
+#define CSL_WKUP_CTRL_MMR0_CFG0_CLR(r, m) CSL_WKUP_CTRL_MMR0_CFG0_WR(r, CSL_WKUP_CTRL_MMR0_CFG0_RD(r) & ~(m))
+
+static int Lpm_i2cReadTimeout(char add, unsigned char *rxd, unsigned int timeout)
+{
+    unsigned int n, loop = 0;
+
+    /* wait BB --> 0 */
+    while(((CSL_WKUP_I2C0_CFG_RD(CSL_I2C_IRQSTATUS_RAW) & (0x1 << 12)) != 0x00 ) &&
+          loop++ < timeout) {}
+
+    if(loop >= timeout)
+    {
+        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout loop exceed %d\n", timeout);
+        return(-1);
+    }
+
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_CNT, 1);
+    n = CSL_WKUP_I2C0_CFG_RD(CSL_I2C_CON) & ~0x2;
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_CON, (n | (3 << 9)));
+    CSL_WKUP_I2C0_CFG_SET(CSL_I2C_CON, (1 << 0));
+
+    /* wait XRDY --> 1 */
+    loop = 0;
+    while(((CSL_WKUP_I2C0_CFG_RD(CSL_I2C_IRQSTATUS_RAW) & (0x1 << 4)) == 0x00) &&
+          loop++ < timeout) {}
+
+    if(loop >= timeout)
+    {
+        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for XRDY: loop exceed %d\n", timeout);
+        return(-1);
+    }
+
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_DATA, add); // write enable to register lock
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_IRQSTATUS, 0x1 << 4);
+
+    /* wait ARDY --> 1 */
+    loop = 0;
+    while(((CSL_WKUP_I2C0_CFG_RD(CSL_I2C_IRQSTATUS_RAW) & (0x1 << 2)) == 0x00) &&
+          loop++ < timeout) {}
+
+    if(loop >= timeout)
+    {
+        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for ARDY: loop exceed %d\n", timeout);
+        return(-1);
+    }
+
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_IRQSTATUS, CSL_WKUP_I2C0_CFG_RD(CSL_I2C_IRQSTATUS_RAW));
+
+    n = CSL_WKUP_I2C0_CFG_RD(CSL_I2C_CON) & ~(0x1 << 9);
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_CON, n | (1 << 10));
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_CNT, 1);
+    CSL_WKUP_I2C0_CFG_SET(CSL_I2C_CON, (3 << 0));
+
+    /* wait RRDY --> 1 */
+    loop = 0;
+    while(((CSL_WKUP_I2C0_CFG_RD(CSL_I2C_IRQSTATUS_RAW) & (0x1 << 3)) == 0x00) &&
+          loop++ < timeout) {}
+
+    if(loop >= timeout)
+    {
+        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for RRDY: loop exceed %d\n", timeout);
+        return(-1);
+    }
+
+    *rxd = CSL_WKUP_I2C0_CFG_RD(CSL_I2C_DATA);
+
+    /* wait ARDY --> 1 */
+    while(((CSL_WKUP_I2C0_CFG_RD(CSL_I2C_IRQSTATUS_RAW) & (0x1 << 2)) == 0x00) &&
+          loop++ < timeout) {}
+
+    if(loop >= timeout)
+    {
+        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for ARDY: loop exceed %d\n", timeout);
+        return(-1);
+    }
+
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_IRQSTATUS, CSL_WKUP_I2C0_CFG_RD(CSL_I2C_IRQSTATUS_RAW));
+
+    return(0);
+}
+
+static unsigned char Lpm_i2cRead(char add)
+{
+    unsigned char rxData;
+
+    Lpm_i2cReadTimeout(add, &rxData, 0xFFFFFFFF);
+
+    return(rxData);
+}
+
+static void Lpm_i2cWrite(char add, char data)
+{
+    unsigned int n;
+
+    /* wait BB --> 0 */
+    while((CSL_WKUP_I2C0_CFG_RD(CSL_I2C_IRQSTATUS_RAW) & (0x1 << 12)) != 0x00) {}
+
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_CNT, 2);
+    n = CSL_WKUP_I2C0_CFG_RD(CSL_I2C_CON) & ~0x2;
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_CON, (n | (3 << 9)));
+    n = CSL_WKUP_I2C0_CFG_RD(CSL_I2C_CON);
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_CON, (n | (3 << 0)));
+
+    for(n = 0; n < 2; n++)
+    {
+        /* wait XRDY --> 1 */
+        while((CSL_WKUP_I2C0_CFG_RD(CSL_I2C_IRQSTATUS_RAW) & (0x1 << 4)) == 0x00) {}
+        if(n==0)
+        {
+            /* write enable to register lock */
+            CSL_WKUP_I2C0_CFG_WR(CSL_I2C_DATA, add);
+        }
+        else
+        {
+            /* write enable to register lock */
+            CSL_WKUP_I2C0_CFG_WR(CSL_I2C_DATA, data);
+            CSL_WKUP_I2C0_CFG_WR(CSL_I2C_IRQSTATUS, (0x1 << 4));
+        }
+    }
+
+    /* wait ARDY --> 1 */
+    while((CSL_WKUP_I2C0_CFG_RD(CSL_I2C_IRQSTATUS_RAW) & (0x1 << 2)) == 0x00) {}
+
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_IRQSTATUS, CSL_WKUP_I2C0_CFG_RD(CSL_I2C_IRQSTATUS_RAW));
+}
+
+static void Lpm_i2cConfigWkup(char pmic)
+{
+    static char current_pmic;
+    unsigned int n;
+
+    /*
+     * This is an optimization to prenvent setting again the I2C
+     * when it's not needed
+     */
+    if (pmic == current_pmic)
+        return;
+
+    current_pmic = pmic;
+
+    CSL_WKUP_CTRL_MMR0_CFG0_SET(CSL_MAIN_PADCFG_CTRL_MMR_CFG0_PADCONFIG62, (1 << 18));
+    CSL_WKUP_CTRL_MMR0_CFG0_SET(CSL_MAIN_PADCFG_CTRL_MMR_CFG0_PADCONFIG63, (1 << 18));
+
+    /*  reset the I2C */
+    CSL_WKUP_I2C0_CFG_SET(CSL_I2C_SYSC, (1 << 1));
+    CSL_WKUP_I2C0_CFG_SET(CSL_I2C_SYSC, (1 << 3));
+
+    /* enable I2C */
+    CSL_WKUP_I2C0_CFG_SET(CSL_I2C_CON, (1 << 15));
+    while((CSL_WKUP_I2C0_CFG_RD(CSL_I2C_SYSS) & 0x1) == 0x00){}
+
+    /* set divider = 2 */
+    n = CSL_WKUP_I2C0_CFG_RD(CSL_I2C_PSC) & ~0xFF;
+    /* 96/(7+1) = 12MHz */
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_PSC, (n | 0x7));
+
+    /* 9.6MHz/(n1 + n2) = 0.4 -- > n1 + n2 = 24 */
+    /* set SCLL 7 + 9 = 16 */
+    n = CSL_WKUP_I2C0_CFG_RD(CSL_I2C_SCLL) & ~0xFF;
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_SCLL, (n | 0x9));
+    /* set SCLH 5 + 9 = 14 */
+    n = CSL_WKUP_I2C0_CFG_RD(CSL_I2C_SCLH) & ~0xFF;
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_SCLH, (n | 0x9));
+
+    CSL_WKUP_I2C0_CFG_CLR(CSL_I2C_CON, 0xCF03);
+    CSL_WKUP_I2C0_CFG_CLR(CSL_I2C_CNT, 0xFFFF);
+    CSL_WKUP_I2C0_CFG_CLR(CSL_I2C_BUF, 0x8080);
+
+    /* set own address = 0xB4 (random) */
+    n = CSL_WKUP_I2C0_CFG_RD(CSL_I2C_OA) & ~0x3FF;
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_OA, (n | 0xb4));
+
+    /* enable I2C */
+    CSL_WKUP_I2C0_CFG_SET(CSL_I2C_CON, (1 << 15));
+    while((CSL_WKUP_I2C0_CFG_RD(CSL_I2C_SYSS) & 0x1) == 0x00){}
+
+    /* set PMIC ADDRESS */
+    n = CSL_WKUP_I2C0_CFG_RD(CSL_I2C_SA) & ~0x3FF;
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_SA, (n | pmic));
+
+    /* Set TX / RX threshold to 1 [5:0] = 1-1; [13:8] = 1-1 */
+    CSL_WKUP_I2C0_CFG_WR(CSL_I2C_BUF, ((1 << 6) | (1 << 14)));
+
+    /* write enable */
+    Lpm_i2cWrite(0xA1, 0x9B);
+}
+
+static uint8_t Lpm_readPmic(uint8_t reg)
+{
+    unsigned char rxd;
+#define PMIC_ADDR 0x48
+    Lpm_i2cConfigWkup(PMIC_ADDR);
+    rxd = Lpm_i2cRead(reg);
+    Lpm_debugFullPrintf("Lpm_readPmicA: reg=0x%x 0x%x\n", reg, rxd);
+
+    return(rxd);
+}
+
 /*
  * \brief Run the suspend sequence (set DDR in retention and powerdown the SOC)
  *
@@ -204,6 +421,11 @@ static void Lpm_ddrEnterRetention(void)
 void Lpm_enterRetention(void)
 {
 	dbg_line("Lpm_enterRetention: Enter retention");
+
+	uint8_t test = Lpm_readPmic(0x86);
+	dbg_line("^^");
+	dump_byte(test);
+	dbg_line("@@");
 
 	/* Make sure that nothing remains in cache before going to retention */
 	Lpm_cleanAllDCache();
