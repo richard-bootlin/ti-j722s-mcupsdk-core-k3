@@ -74,211 +74,6 @@
 #define CDNS_DENALI_PHY_1369                                    0x5564U
 #define CDNS_DENALI_PHY_1369_PHY_UPDATE_MASK                    0x1U
 
-static inline uint32_t readl(uint32_t a)
-{
-	return *(volatile uint32_t *) (a);
-}
-
-static inline void writel(uint32_t v, uint32_t a)
-{
-	*(volatile uint32_t *) (a) = v;
-}
-
-/*
- *
- * PSC stuff, not sure if needed
- *
- *
- */
-#define BIT(n)  (((uint32_t) 1U) << (n))
-#define PSC_PID                 0x000U
-#define PSC_GBLCTL              0x010U
-#define PSC_GBLSTAT             0x014U
-#define PSC_INTEVAL             0x018U
-#define PSC_IPWKCNT             0x01cU
-#define PSC_MERRPR0             0x040U
-#define PSC_MERRPR1             0x044U
-#define PSC_MERRCR0             0x050U
-#define PSC_MERRCR1             0x054U
-#define PSC_PERRPR              0x060U
-#define PSC_PERRCR              0x068U
-#define PSC_EPCPR               0x070U
-#define PSC_EPCRR               0x078U
-#define PSC_RAILSTAT            0x100U
-#define PSC_RAILCTL             0x104U
-#define PSC_RAILSET             0x108U
-#define PSC_PTCMD               0x120U
-#define PSC_PTSTAT              0x128U
-#define PSC_PDSTAT(domain)      (0x200U + (4U * (domain)))
-#define PSC_PDCTL(domain)       (0x300U + (4U * (domain)))
-#define PSC_PDCFG(domain)       (0x400U + (4U * (domain)))
-#define PSC_MDCFG(id)           (0x600U + (4U * (id)))
-#define PSC_MDSTAT(id)          (0x800U + (4U * (id)))
-#define PSC_MDCTL(id)           (0xa00U + (4U * (id)))
-
-#define MDSTAT_STATE_MASK               0x3fU
-#define MDSTAT_BUSY_MASK                0x30U
-#define MDSTAT_STATE_SWRSTDISABLE       0x00U
-#define MDSTAT_STATE_SYNCRST            0x01U
-#define MDSTAT_STATE_DISABLE            0x02U
-#define MDSTAT_STATE_ENABLE             0x03U
-#define MDSTAT_STATE_AUTO_SLEEP         0x04U
-#define MDSTAT_STATE_AUTO_WAKE          0x05U
-#define MDSTAT_STATE_DISABLE_CLK_ON     0x21U
-#define MDSTAT_STATE_DISABLE_IN_PROG    0x22U
-#define MDSTAT_STATE_RETRY_DISABLE      0x23U
-#define MDSTAT_STATE_ENABLE_IN_PROG     0x24U
-#define MDSTAT_STATE_SLEEP_IN_PROG      0x25U
-#define MDSTAT_STATE_CLK_ON1            0x26U
-#define MDSTAT_STATE_CLK_OFF1           0x27U
-#define MDSTAT_STATE_CLK_ON2            0x28U
-#define MDSTAT_STATE_CLK_OFF2           0x29U
-#define MDSTAT_STATE_CLK_ON3            0x2aU
-#define MDSTAT_STATE_CLK_OFF3           0x2bU
-
-#define MDSTAT_EMUIHB           BIT(17) /* EMU alters module state */
-#define MDSTAT_EMURST           BIT(16) /* EMU alters reset to module */
-#define MDSTAT_MCKOUT           BIT(12) /* Module clock output status */
-#define MDSTAT_MRSTDONE         BIT(11) /* Module reset done */
-#define MDSTAT_MRST             BIT(10) /* Module reset de asserted */
-#define MDSTAT_LRSTDONE         BIT(9)  /* Local reset done */
-#define MDSTAT_LRST             BIT(8)  /* Local reset de asserted */
-
-#define MDCTL_STATE_MASK        0x3fU
-#define MDCTL_FORCE             BIT(31)
-#define MDCTL_RESET_ISO         BIT(12)         /* Enable reset isolation */
-#define MDCTL_EMUIHBIE          BIT(10)         /* EMU alters module IE */
-#define MDCTL_EMURSTIE          BIT(9)          /* EMU alter reset IE */
-#define MDCTL_LRST              BIT(8)          /* Assert local reset when 0 */
-
-#define PDSTAT_EMUIHB                   BIT(11) /* EMU alters domain state */
-#define PDSTAT_PWRBAD                   BIT(10) /* Power bad error */
-#define PDSTAT_PORDONE                  BIT(9)  /* Power on reset done */
-#define PDSTAT_POR                      BIT(8)  /* Power on reset de asserted */
-#define PDSTAT_STATE_MASK               0x1fU
-#define PDSTAT_STATE_OFF                0x00U
-#define PDSTAT_STATE_ON                 0x01U
-#define PDSTAT_STATE_ON_ARB             0x10U
-#define PDSTAT_STATE_SWITCH_ON          0x11U
-#define PDSTAT_STATE_ON_RAIL_CNT        0x12U
-#define PDSTAT_STATE_WAIT_ALL_SYNC_RST  0x13U
-#define PDSTAT_STATE_STRETCH_POR        0x14U
-#define PDSTAT_STATE_WAIT_POR_DONE      0x15U
-#define PDSTAT_STATE_COUNT16            0x16U
-#define PDSTAT_STATE_WAIT_ALL_SWRST_DIS 0x17U
-#define PDSTAT_STATE_OFF_ARB            0x18U
-#define PDSTAT_STATE_SWITCH_OFF         0x19U
-#define PDSTAT_STATE_OFF_RAIL_CNT       0x1aU
-
-#define PDCTL_STATE_MASK        BIT(0)
-#define PDCTL_EPCGOOD           BIT(8)  /* External power control on */
-#define PDCTL_EMUIHBIE          BIT(9)  /* EMU alters domain state IE */
-#define PDCTL_FORCE             BIT(31)
-
-#define PSC_TRANSITION_TIMEOUT  100000
-
-#define PD_DDR                           13     /* Main DDR PD and its LPSCs */
-#define LPSC_EMIF_LOCAL                  72
-#define LPSC_EMIF_CFG_ISO                73
-#define LPSC_EMIF_DATA_ISO               74
-#define DDR_PD                           PD_DDR       /* DDR power domain */
-
-#define MDCTL_STATE_SWRSTDISABLE       0x00U
-#define MDCTL_STATE_SYNCRST            0x01U
-#define MDCTL_STATE_DISABLE            0x02U
-#define MDCTL_STATE_ENABLE             0x03U
-#define MDCTL_STATE_AUTO_SLEEP         0x04U
-#define MDCTL_STATE_AUTO_WAKE          0x05U
-
-#define PDCTL_STATE_OFF         0U
-#define PDCTL_STATE_ON          1U
-#define psc_raw_read readl
-#define psc_raw_write writel
-
-#define DM_R5_CORE_FREQUENCY_MHZ         800
-static void asm_func(void)
-{
-	asm ("");
-}
-
-void delay_1us(void)
-{
-	/* This while-loop takes 2 instructions. */
-	unsigned long x = DM_R5_CORE_FREQUENCY_MHZ / 2;
-
-	while (x != 0U) {
-		x--;
-		asm_func();
-	}
-}
-
-int32_t psc_raw_pd_wait(uint32_t psc_base, uint8_t pd)
-{
-	int32_t ret = 0;
-	int32_t i = PSC_TRANSITION_TIMEOUT;
-
-	while (((psc_raw_read(psc_base + PSC_PTSTAT) & BIT(pd)) != 0U) && (i != 0)) {
-		delay_1us();
-		--i;
-	}
-
-	if (i == 0) {
-		ret = -1;
-	}
-
-	return ret;
-}
-
-void psc_raw_pd_initiate(uint32_t psc_base, uint8_t pd)
-{
-	psc_raw_write(BIT(pd), psc_base + PSC_PTCMD);
-}
-
-void psc_raw_pd_set_state(uint32_t psc_base, uint8_t pd, uint32_t state, int force)
-{
-	uint32_t pdctl = psc_raw_read(psc_base + PSC_PDCTL(pd));
-
-	pdctl &= ~PDCTL_STATE_MASK;
-	pdctl |= state;
-
-	if (force) {
-		pdctl |= PDCTL_FORCE;
-	} else {
-		pdctl &= ~PDCTL_FORCE;
-	}
-
-	psc_raw_write(pdctl, psc_base + PSC_PDCTL(pd));
-}
-
-void psc_raw_lpsc_set_state(uint32_t psc_base, uint8_t lpsc, uint32_t state, int force)
-{
-	uint32_t mdctl = psc_raw_read(psc_base + PSC_MDCTL(lpsc));
-
-	mdctl &= ~MDCTL_STATE_MASK;
-	mdctl |= state;
-
-	if (force) {
-		mdctl |= MDCTL_FORCE;
-	} else {
-		mdctl &= ~MDCTL_FORCE;
-	}
-
-	psc_raw_write(mdctl, psc_base + PSC_MDCTL(lpsc));
-}
-
-uint8_t psc_raw_lpsc_get_state(uint32_t psc_base, uint8_t lpsc)
-{
-	return (uint8_t) (MDSTAT_STATE_MASK & psc_raw_read(psc_base + PSC_MDSTAT(lpsc)));
-}
-
-/*
- *
- * End of PSC stuf
- *
- *
- */
-
-
 
 // TODO
 static void Lpm_cleanAllDCache(void)
@@ -315,6 +110,16 @@ static void Lpm_cleanAllDCache(void)
 
 #define ctrlmmr_raw_readl readl
 #define ctrlmmr_raw_writel writel
+
+static inline uint32_t readl(uint32_t a)
+{
+	return *(volatile uint32_t *) (a);
+}
+
+static inline void writel(uint32_t v, uint32_t a)
+{
+	*(volatile uint32_t *) (a) = v;
+}
 
 void ctrlmmr_unlock(uint32_t base, uint8_t partition)
 {
@@ -387,33 +192,6 @@ static void Lpm_ddrEnterRetention(void)
 	val &= ~CDNS_DENALI_CTL_158_LP_CMD_MASK;
 	val |= CDNS_DENALI_CTL_158_LP_CMD_SUSPEND;
 	writel(val, DDR_CTRL_BASE + CDNS_DENALI_CTL_158);
-
-    { // end of enter_ddr_low_power_mode() for am62px
-        int ret;
-#define MAIN_PSC_BASE                   (0x00400000U)
-#define MCU_PSC_BASE                    (0x04000000U)
-        psc_raw_lpsc_set_state(MAIN_PSC_BASE, LPSC_EMIF_DATA_ISO,
-                               MDCTL_STATE_DISABLE, 0);
-        psc_raw_pd_initiate(MAIN_PSC_BASE, DDR_PD);
-
-        ret = psc_raw_pd_wait(MAIN_PSC_BASE, DDR_PD);
-
-        if (ret == 0) {
-            psc_raw_lpsc_set_state(MAIN_PSC_BASE, LPSC_EMIF_LOCAL,
-                                   MDCTL_STATE_DISABLE, 0);
-            psc_raw_pd_initiate(MAIN_PSC_BASE, DDR_PD);
-
-            ret = psc_raw_pd_wait(MAIN_PSC_BASE, DDR_PD);
-        }
-
-        if (ret == 0) {
-            psc_raw_lpsc_set_state(MAIN_PSC_BASE, LPSC_EMIF_CFG_ISO,
-                                   MDCTL_STATE_DISABLE, 0);
-            psc_raw_pd_initiate(MAIN_PSC_BASE, DDR_PD);
-
-            ret = psc_raw_pd_wait(MAIN_PSC_BASE, DDR_PD);
-        }
-    }
 }
 
 /*
