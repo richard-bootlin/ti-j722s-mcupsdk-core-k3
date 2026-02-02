@@ -40,7 +40,7 @@
  */
 #include <stdint.h>
 #include <cslr_soc_baseaddress.h>
-#include <cslr_main_padcfg_ctrl_mmr.h>
+#include <cslr_mcu_padcfg_ctrl_mmr.h>
 #include <cslr_i2c.h>
 #include "dbg_uart.c"
 
@@ -343,6 +343,7 @@ static void Lpm_i2cConfigWkup(char pmic)
 {
     static char current_pmic;
     unsigned int n;
+    uint32_t val;
 
     /*
      * This is an optimization to prenvent setting again the I2C
@@ -353,8 +354,21 @@ static void Lpm_i2cConfigWkup(char pmic)
 
     current_pmic = pmic;
 
-    CSL_WKUP_CTRL_MMR0_CFG0_SET(CSL_MAIN_PADCFG_CTRL_MMR_CFG0_PADCONFIG62, (1 << 18));
-    CSL_WKUP_CTRL_MMR0_CFG0_SET(CSL_MAIN_PADCFG_CTRL_MMR_CFG0_PADCONFIG63, (1 << 18));
+    /*
+     * Pinmux I2C:
+     * B9 MCU_PADCONFIG19 WKUP_I2C0_SCL 0x0408404C mux0
+     * D11 MCU_PADCONFIG20 WKUP_I2C0_SDA 0x04084050 mux0
+     */
+    val = CSL_REG32_RD_OFF(CSL_MCU_PADCFG_CTRL0_CFG0_BASE,
+			   CSL_MCU_PADCFG_CTRL_MMR_CFG0_PADCONFIG19);
+    val |= 1 << 18;
+    CSL_REG32_WR_OFF(CSL_MCU_PADCFG_CTRL0_CFG0_BASE,
+		     CSL_MCU_PADCFG_CTRL_MMR_CFG0_PADCONFIG19, val);
+    val = CSL_REG32_RD_OFF(CSL_MCU_PADCFG_CTRL0_CFG0_BASE,
+			   CSL_MCU_PADCFG_CTRL_MMR_CFG0_PADCONFIG20);
+    val |= 1 << 18;
+    CSL_REG32_WR_OFF(CSL_MCU_PADCFG_CTRL0_CFG0_BASE,
+		     CSL_MCU_PADCFG_CTRL_MMR_CFG0_PADCONFIG20, val);
 
     /*  reset the I2C */
     CSL_WKUP_I2C0_CFG_SET(CSL_I2C_SYSC, (1 << 1));
@@ -400,15 +414,22 @@ static void Lpm_i2cConfigWkup(char pmic)
     Lpm_i2cWrite(0xA1, 0x9B);
 }
 
+#define PMIC_ADDR 0x48
 static uint8_t Lpm_readPmic(uint8_t reg)
 {
     unsigned char rxd;
-#define PMIC_ADDR 0x48
     Lpm_i2cConfigWkup(PMIC_ADDR);
     rxd = Lpm_i2cRead(reg);
     Lpm_debugFullPrintf("Lpm_readPmicA: reg=0x%x 0x%x\n", reg, rxd);
 
     return(rxd);
+}
+
+static void Lpm_writePmic(uint8_t reg, uint8_t val)
+{
+    Lpm_i2cConfigWkup(PMIC_ADDR);
+    Lpm_i2cWrite(reg, val);
+    Lpm_debugFullPrintf("Lpm_writePmic: reg=0x%x 0x%x\n", reg, val);
 }
 
 /*
@@ -423,10 +444,8 @@ void Lpm_enterRetention(void)
 	dbg_line("Lpm_enterRetention: Enter retention");
 
 	uint8_t test = Lpm_readPmic(0x86);
-	dbg_line("^^");
 	dump_byte(test);
-	dbg_line("@@");
-
+	dbg_line("^^");
 	/* Make sure that nothing remains in cache before going to retention */
 	Lpm_cleanAllDCache();
 
@@ -437,6 +456,11 @@ void Lpm_enterRetention(void)
 	// TODO Lpm_setupPmic();
 	dbg_line("Lpm_enterRetention: Done! Going to wait now");
 
+//i2cset -f -y -m 0xFF -r -a 0 0x48 0x86 0x2
+	Lpm_writePmic(0x86, 0x02);
+	test = Lpm_readPmic(0x86);
+	dump_byte(test);
+	dbg_line("^^");
 	while(1){};
 }
 
