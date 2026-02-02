@@ -10,6 +10,8 @@ const includes_r5f = {
     common: [
         "soc/j722s",
 	"./",
+        "../../hw_include/j722s",
+        "../../i2c/v0",
     ],
 };
 

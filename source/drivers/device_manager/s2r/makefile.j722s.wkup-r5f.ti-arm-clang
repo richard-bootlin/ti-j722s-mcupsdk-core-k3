@@ -27,6 +27,8 @@ INCLUDES_common := \
     -I${MCU_PLUS_SDK_PATH}/source \
     -Isoc/j722s \
     -I./ \
+    -I../../hw_include/j722s \
+    -I../../i2c/v0 \
 
 DEFINES_common := \
     -DSOC_J722S \
