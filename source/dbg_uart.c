@@ -1,9 +1,15 @@
 
 #include <stdint.h>
 #include <stdarg.h>
+#ifndef WKUP_UART0_BASE
 #define WKUP_UART0_BASE 0x2b300000U
+#endif
+#ifndef MAIN_UART0_BASE
 #define MAIN_UART0_BASE 0x28000000U
+#endif
+#ifndef MCU_UART0_BASE
 #define MCU_UART0_BASE  0x04a00000U
+#endif
 #define DBG_UART_LCR 0x0CU
 #define DBG_UART_LSR 0x14U
 #define DBG_UART_THR 0x00U
