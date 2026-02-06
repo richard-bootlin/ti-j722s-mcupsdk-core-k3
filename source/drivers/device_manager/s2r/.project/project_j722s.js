@@ -12,6 +12,10 @@ const includes_r5f = {
 	"./",
         "../../hw_include/j722s",
         "../../i2c/v0",
+        "../rm_pm_hal/rm_pm_hal_src/lpm/cdns_generated_defines",
+        "../rm_pm_hal/rm_pm_hal_src/lpm/include/soc/am62px",
+        "../rm_pm_hal/rm_pm_hal_src/include",
+        "../rm_pm_hal/rm_pm_hal_src",
     ],
 };
 
