@@ -44,7 +44,8 @@
 #include <cslr_i2c.h>
 #include "dbg_uart.c"
 
-#define Lpm_debugFullPrintf(...) do {} while(0)
+#define Lpm_debugFullPrintf Lpm_debugPrintf
+#define Lpm_debugReadPmic Lpm_readPmic
 // TODO: use a common include file for those:
 // was in source/drivers/device_manager/rm_pm_hal/rm_pm_hal_src/lpm/include/soc/am62px/baseaddress.h
 #define DDR_CTRL_BASE                   (0x0f308000U)
