@@ -40,8 +40,14 @@
  */
 #include <stdint.h>
 #include <cslr_soc_baseaddress.h>
-#include <cslr_mcu_padcfg_ctrl_mmr.h>
+#include <baseaddress.h>
 #include <cslr_i2c.h>
+#include <cslr_mcu_padcfg_ctrl_mmr.h>
+#include <ddr_functions.h>
+#include <DDRSS_addr_map_sfr_offs_ew_32bit.h>
+#include <lib/bitops.h>
+#include <lpm/timeout.h>
+#include <wkup_ctrl_mmr.h>
 #include "dbg_uart.c"
 
 #define Lpm_debugFullPrintf Lpm_debugPrintf
@@ -78,6 +84,14 @@
 
 #define CDNS_DENALI_PHY_1369                                    0x5564U
 #define CDNS_DENALI_PHY_1369_PHY_UPDATE_MASK                    0x1U
+
+struct pll_raw_data {
+	uint32_t base;
+	uint32_t freq_ctrl0;
+	uint32_t freq_ctrl1;
+	uint32_t div_ctrl;
+	uint32_t hsdiv[16];
+};
 
 
 // TODO
@@ -126,12 +140,151 @@ static inline void writel(uint32_t v, uint32_t a)
 	*(volatile uint32_t *) (a) = v;
 }
 
+#define PLL_16FFT_CTRL_OFFSET    ((uint32_t) 0x20UL)
+#define PLL_16FFT_CTRL_BYPASS_EN BIT(31)
+#define PLLOFFSET(idx) (0x1000U * (idx))
+struct pll_raw_data main_pll12 =
+{ .base = MAIN_PLL_MMR_BASE + PLLOFFSET(12U), };
+
+void pll_bypass(struct pll_raw_data *pll, int enable)
+{
+	uint32_t ctrl;
+
+	ctrl = readl(pll->base + PLL_16FFT_CTRL_OFFSET);
+	if (enable) {
+		ctrl |= PLL_16FFT_CTRL_BYPASS_EN;
+	} else {
+		ctrl &= ~PLL_16FFT_CTRL_BYPASS_EN;
+	}
+	writel(ctrl, pll->base + PLL_16FFT_CTRL_OFFSET);
+}
+
+static int32_t fsp_shift(void)
+{
+	int32_t ret = 0;
+	uint32_t timeout = 0;
+	uint32_t val = 0;
+
+	/* Request freq change */
+	val = (readl(WKUP_CTRL_MMR_BASE + CHNG_DDR4_FSP_REQ)) & (~CHNG_DDR4_FSP_REQ_TYPE_MASK);
+	val |= CHNG_DDR4_FSP_REQ_TYPE_FSP0;
+	writel(val, WKUP_CTRL_MMR_BASE + CHNG_DDR4_FSP_REQ);
+	val |= CHNG_DDR4_FSP_REQ_SET;
+	writel(val, WKUP_CTRL_MMR_BASE + CHNG_DDR4_FSP_REQ);
+
+	/* Poll for freq change request to be set */
+	timeout = TIMEOUT_10_MS;
+	while ((timeout > 0U) && ((readl(WKUP_CTRL_MMR_BASE + DDR4_FSP_CLKCHNG_REQ)
+				   & DDR4_FSP_CLKCHNG_REQ_SET) != DDR4_FSP_CLKCHNG_REQ_SET)) {
+		--timeout;
+	}
+	if (timeout == 0U) {
+		ret = -1;
+	}
+
+	/* Set the PLL frequency to the requested frequency */
+	val = (readl(WKUP_CTRL_MMR_BASE + DDR4_FSP_CLKCHNG_REQ)) & DDR4_FSP_CLKCHNG_REQ_TYPE_MASK;
+	if (val == DDR4_FSP_CLKCHNG_REQ_TYPE_FSP0) {
+		pll_bypass(&main_pll12, 1);
+	} else {
+		ret = -1;
+	}
+
+	/* Set the FSP ack bit */
+	writel(DDR4_FSP_CLKCHNG_REQ_ACK, (WKUP_CTRL_MMR_BASE + DDR4_FSP_CLKCHNG_ACK));
+
+	/* Wait for request to go away */
+	timeout = TIMEOUT_10_MS;
+	while ((timeout > 0U) && ((readl(WKUP_CTRL_MMR_BASE + DDR4_FSP_CLKCHNG_REQ) &
+				   DDR4_FSP_CLKCHNG_REQ_SET) != DDR4_FSP_CLKCHNG_REQ_CLR)) {
+		--timeout;
+	}
+	if (timeout == 0U) {
+		ret = -1;
+	}
+
+	/* Clear the ACK bit */
+	val = readl(WKUP_CTRL_MMR_BASE + DDR4_FSP_CLKCHNG_ACK);
+	val &= ~DDR4_FSP_CLKCHNG_REQ_ACK;
+	writel(val, (WKUP_CTRL_MMR_BASE + DDR4_FSP_CLKCHNG_ACK));
+
+	/* Poll for CHNG_DDR4_FSP_ACK bit to be 1 */
+	timeout = TIMEOUT_10_MS;
+	while ((timeout > 0U) && ((readl(WKUP_CTRL_MMR_BASE + CHNG_DDR4_FSP_ACK) &
+				   (CHNG_DDR4_FSP_CHNG_ACK)) != CHNG_DDR4_FSP_CHNG_ACK)) {
+		--timeout;
+	}
+	if (timeout == 0U) {
+		ret = -1;
+	}
+
+	/* De assert request */
+	writel(0, (WKUP_CTRL_MMR_BASE + CHNG_DDR4_FSP_ACK));
+
+	val = readl(WKUP_CTRL_MMR_BASE + CHNG_DDR4_FSP_REQ);
+	val &= ~CHNG_DDR4_FSP_REQ_SET;
+	writel(val, (WKUP_CTRL_MMR_BASE + CHNG_DDR4_FSP_REQ));
+
+	return ret;
+}
+
 void ctrlmmr_unlock(uint32_t base, uint8_t partition)
 {
 	uint32_t addr = base + (partition * CTRL_MMR0_PARTITION_SIZE);
 
 	ctrlmmr_raw_writel(CTRLMMR_LOCK_KICK0_UNLOCK_VAL, addr + CTRLMMR_LOCK_KICK0);
 	ctrlmmr_raw_writel(CTRLMMR_LOCK_KICK1_UNLOCK_VAL, addr + CTRLMMR_LOCK_KICK1);
+}
+
+/**
+ * \brief Write to a specific field in an MMR.
+ * \param mmr_address MMR address
+ * \param field_value value to be written
+ * \param width width of the field
+ * \param leftshift the number of bit fields the value has to be left shifted
+ */
+static void Write_MMR_Field(uint32_t mmr_address, uint32_t field_value,
+			    uint32_t width, uint32_t leftshift)
+{
+	uint32_t *p_mmr;
+	uint32_t mask;
+
+	p_mmr = (uint32_t *) mmr_address;                                       /* Grab the MMR value */
+	mask = (((uint32_t) 1U << width) - ((uint32_t) 1U << leftshift));       /* Build a mask of 1s for the field. */
+	mask = ~(mask);                                                         /* Invert the mask so that the field will be zero'd out with the AND operation. */
+	*p_mmr &= mask;                                                         /* Zero out the field in the register. */
+	*p_mmr |= (field_value << leftshift);                                   /* Assign the value to that specific field. */
+}
+
+static void put_ddrss_in_data_retention_thru_wkup_mmr(uint32_t enable)
+{
+	uint32_t val = 0U;
+
+	/* Write into data_retention MMR to activate or deactivate DDR data retention */
+	writel(enable, WKUP_CTRL_MMR_BASE + DDR16SS_PMCTRL);
+
+	/* Write `1' into data_ret_ld[31] MMR to generate a LD signal to latch the retention signal */
+	writel((((DDR16SS_DATA_RET_LD_OPEN << DDR16SS_DATA_RET_LD_BIT) | enable)), WKUP_CTRL_MMR_BASE + DDR16SS_PMCTRL);
+
+	val = readl(WKUP_CTRL_MMR_BASE + DDR16SS_PMCTRL);
+	while (val != ((DDR16SS_DATA_RET_LD_OPEN << DDR16SS_DATA_RET_LD_BIT) | enable)) {
+		val = readl(WKUP_CTRL_MMR_BASE + DDR16SS_PMCTRL);
+	}
+
+	/* Writes `0' into data_ret_ld[31] to close the latch */
+	writel((((DDR16SS_DATA_RET_LD_CLOSE << DDR16SS_DATA_RET_LD_BIT) | enable)), WKUP_CTRL_MMR_BASE + DDR16SS_PMCTRL);
+}
+
+static void enter_lpm_self_refresh(void)
+{
+	uint32_t lp_status = 0;
+
+	/* Program Self Refresh mode */
+	writel((LP_MODE_LONG_SELF_REFRESH << 8), DDRSS0_CTRL_BASE + (uint32_t) DENALI_CTL_160__SFR_OFFS);
+
+	while (lp_status != STATUS_SR_LONG_ENTERED) {
+		lp_status = (readl(DDRSS0_CTRL_BASE + (uint32_t) DENALI_CTL_169__SFR_OFFS) & 0x7F00U);
+	}
 }
 
 static void Lpm_ddrEnterRetention(void)
@@ -160,43 +313,26 @@ static void Lpm_ddrEnterRetention(void)
 	ctrlmmr_unlock(MCU_CTRL_MMR_BASE, 0); // same as Lpm_ddrUnlockMCU(0)
 	ctrlmmr_unlock(MCU_CTRL_MMR_BASE, 2);
 
-	/*
-	 * Enable auto training for WRLVL, RDLVL, CALVL
-	 * Assumption: RDLVL_GATE, CALVL auto trainings enabled by bootloader
-	 */
-	val = readl(DDR_CTRL_BASE + CDNS_DENALI_PI_25);
-	val |= CDNS_DENALI_PI_25_WRLVL_AUTO_REQ;
-	writel(val, DDR_CTRL_BASE + CDNS_DENALI_PI_25);
 
-	val = readl(DDR_CTRL_BASE + CDNS_DENALI_PI_43);
-	val |= CDNS_DENALI_PI_43_RDLVL_AUTO_REQ;
-	writel(val, DDR_CTRL_BASE + CDNS_DENALI_PI_43);
+	/* start of enter_io_ddr_mode */
+	/* Disable self refresh auto entry and exit */
+	Write_MMR_Field(DDR_CTRL_BASE + DENALI_CTL_169__SFR_OFFS, 0, 4, 16);
+	Write_MMR_Field(DDR_CTRL_BASE + DENALI_CTL_169__SFR_OFFS, 0, 4, 24);
 
-	val = readl(DDR_CTRL_BASE + CDNS_DENALI_PI_55);
-	val |= CDNS_DENALI_PI_55_CALVL_AUTO_REQ;
-	writel(val, DDR_CTRL_BASE + CDNS_DENALI_PI_55);
+	/* Set valid data for FSP F0 and F2 mr_fsp_data_valid_fN to initiate DFS request */
+	Write_MMR_Field(DDR_CTRL_BASE + DENALI_CTL_279__SFR_OFFS, 1, 1, 24);
+	Write_MMR_Field(DDR_CTRL_BASE + DENALI_CTL_280__SFR_OFFS, 1, 1, 8);
 
-	/* Maintain reset signal throughout deep sleep */
-	val = readl(DDR_CTRL_BASE + CDNS_DENALI_PHY_1306);
-	val |= CDNS_DENALI_PHY_1306_PHY_SET_DFI_INPUT_0;
-	writel(val, DDR_CTRL_BASE + CDNS_DENALI_PHY_1306);
+	/* Shift to boot frequency */
+	fsp_shift();
 
-	/* Set CDNS_DENALI_PHY_1369:PHY UPDATE MASK */
-	val = readl(DDR_CTRL_BASE + CDNS_DENALI_PHY_1369);
-	val |= CDNS_DENALI_PHY_1369_PHY_UPDATE_MASK;
-	writel(val, DDR_CTRL_BASE + CDNS_DENALI_PHY_1369);
+	/* If shift is not successful, then return fail */
+	if (((readl(DDR_CTRL_BASE + DENALI_CTL_179__SFR_OFFS) & 0x3000000U) >> 24U) != 0U) {
+		Lpm_debugFullPrintf("Failed shifting DDR to boot frequency\n");
+	}
 
-	/* Clear 0x7 in CDNS_DENALI_PHY_1364:PHY_INIT_UPDATE_CONFIG */
-	val = readl(DDR_CTRL_BASE + CDNS_DENALI_PHY_1364);
-	val &= ~(CDNS_DENALI_PHY_1364_PHY_INIT_UPDATE_CONFIG_MASK <<
-		 CDNS_DENALI_PHY_1364_PHY_INIT_UPDATE_CONFIG_SHIFT);
-	writel(val, DDR_CTRL_BASE + CDNS_DENALI_PHY_1364);
-
-	/* Enter Self refresh with ctrl clk gating in deep sleep */
-	val = readl(DDR_CTRL_BASE + CDNS_DENALI_CTL_158);
-	val &= ~CDNS_DENALI_CTL_158_LP_CMD_MASK;
-	val |= CDNS_DENALI_CTL_158_LP_CMD_SUSPEND;
-	writel(val, DDR_CTRL_BASE + CDNS_DENALI_CTL_158);
+	enter_lpm_self_refresh();
+	put_ddrss_in_data_retention_thru_wkup_mmr(DDR16SS_RETENTION_EN);
 }
 
 #define CSL_REG32_RD_OFF(p, off)    (CSL_REG32_RD_OFF_RAW( \
