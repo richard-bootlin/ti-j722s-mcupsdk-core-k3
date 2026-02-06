@@ -421,7 +421,7 @@ static uint8_t Lpm_readPmic(uint8_t reg)
     unsigned char rxd;
     Lpm_i2cConfigWkup(PMIC_ADDR);
     rxd = Lpm_i2cRead(reg);
-    Lpm_debugFullPrintf("Lpm_readPmicA: reg=0x%x 0x%x\n", reg, rxd);
+    Lpm_debugFullPrintf("Lpm_readPmic: reg=0x%x 0x%x\n", reg, rxd);
 
     return(rxd);
 }
