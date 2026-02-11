@@ -751,7 +751,7 @@ __maybe_unused static void Lpm_setupPmic(void)
 Lpm_dumpPmic();
 	/* Change FSM_NSLEEP_TRIGGERS: NSLEEP1=high, NSLEEP2=high */
 	Lpm_writePmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR, 0x03);
-	Lpm_debugFullPrintf("Lpm_setupPmic: Write FSM_NSLEEP_TRIGGERS\n");
+	Lpm_debugFullPrintf("%s: Write FSM_NSLEEP_TRIGGERS\n", __func__);
 	Lpm_debugReadPmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR);
 
 	/* Clear interrupts */
@@ -762,55 +762,25 @@ Lpm_dumpPmic();
 	val = Lpm_readPmic(PMIC_CONFIG1_REGADDR);
 	val &= ~(PMIC_NSLEEP2_MASK | PMIC_NSLEEP1_MASK);
 	Lpm_writePmic(PMIC_CONFIG1_REGADDR, val);
-	Lpm_debugFullPrintf("Lpm_setupPmic: Write PMIC_CONFIG1_REGADDR\n");
+	Lpm_debugFullPrintf("%s: Write PMIC_CONFIG1_REGADDR\n", __func__);
 	Lpm_debugReadPmic(PMIC_CONFIG1_REGADDR);
 
-#if 0
-	/* Configure GPIO4_CONF: input, pull-down, signal LP_WKUP1 */
-	Lpm_writePmic(0x34, 0xca);
-	Lpm_debugFullPrintf("Lpm_setupPmic: Write GPIO4_CONF\n");
-	Lpm_debugReadPmic(0x34);
-
-	/* Configure INT_GPIO1_8 (enable GPIO4 interrupt): clear GPIO4_INT */
-	Lpm_writePmic(0x64, SCICLIENT_LPM_GPIO4_BIT);
-	Lpm_debugFullPrintf("Lpm_setupPmic: Write INT_GPIO1_8\n");
-	Lpm_debugReadPmic(0x64);
-
-	/* Configure MASK_GPIO*_RISE */
-	Lpm_writePmic(0x50, SCICLIENT_LPM_GPIO1_8_RISE);
-	Lpm_writePmic(0x51, 0x3F);
-
-	/* Configure MASK_SCICLIENT_LPM_GPIO1_8_FALL (configure GPIO4 falling edge interrupt): enable INT on GPIO4 */
-	Lpm_writePmic(0x4F, SCICLIENT_LPM_GPIO1_8_FALL);
-	Lpm_debugFullPrintf("Lpm_setupPmic: Write MASK_SCICLIENT_LPM_GPIO1_8_FALL\n");
-	Lpm_debugReadPmic(0x4F);
-
-	{
-		uint8_t buf;
-
-		/* Put GPIO6 as output push-pull no pull-up or pull down */
-		Lpm_writePmic(SCICLIENT_LPM_GPIO6_CONF,
-			      1 << SCICLIENT_LPM_DIR_SHIFT | 0 << SCICLIENT_LPM_OD_SHIFT);
-		/* GPIO_OUT_1 */
-		buf = Lpm_readPmic(0x3D) | SCICLIENT_LPM_EN_DDR_RET_1V1; // 1<<5, GPIO6_OUT on
-		Lpm_writePmic(0x3D, buf);
-	}
-#endif
 	/* Write magic number to scratch register to indicate the suspend */
 	Lpm_writePmic(SCICLIENT_LPM_SCRATCH_PAD_REG_3, SCICLIENT_LPM_MAGIC_SUSPEND);
 	Lpm_debugReadPmic(SCICLIENT_LPM_SCRATCH_PAD_REG_3);
 
 	Lpm_debugReadPmic(SCICLIENT_LPM_INT_TOP);
 
-	/* Change SCICLIENT_LPM_FSM_I2C_TRIGGERS */
+	/*
+	 * TODO: this triggers the suspend sequence right away,
+	 * and also wake up right away
+	 */
 	Lpm_writePmic(PMIC_FSM_I2C_TRIGGERS_REGADDR, 0x1);
-	Lpm_debugFullPrintf("Lpm_setupPmic: Write FSM_TRIGGERS\n");
+	Lpm_debugFullPrintf("%s: Write FSM_TRIGGERS\n", __func__);
 	Lpm_debugReadPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
 
 	/* Change FSM_NSLEEP_TRIGGERS: NSLEEP1=high, NSLEEP2=low */
 	Lpm_writePmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR, 0x00);
-	for (unsigned int i = 100000; i > 0; i--) Lpm_i2cRead(0x86);
-Lpm_dumpPmic();
 }
 
 /*
@@ -830,13 +800,8 @@ void Lpm_enterRetention(void)
 	Lpm_ddrEnterRetention();
 	dbg_line("Lpm_enterRetention: DDR retention done");
 
-
-	// TODO Lpm_setupPmic();
 	dbg_line("Lpm_enterRetention: Done! Going to wait now");
 
-	Lpm_dumpPmic();
-
-//i2cset -f -y -m 0xFF -r -a 0 0x48 0x86 0x2
 	Lpm_setupPmic();
 	while(1){};
 }
