@@ -700,8 +700,12 @@ static void Lpm_ClearPmicInterrupts(void)
     Lpm_debugFullPrintf("INT_TOP = 0x%02X\n", int_top);
 }
 
+#define PMIC_CONFIG1_REGADDR                   (0x7dU)
 #define PMIC_FSM_I2C_TRIGGERS_REGADDR          (0x85U)
 #define PMIC_FSM_NSLEEP_TRIGGERS_REGADDR       (0x86U)
+
+#define PMIC_NSLEEP1_MASK BIT(6)
+#define PMIC_NSLEEP2_MASK BIT(7)
 
 #define SCICLIENT_LPM_FSM_I2C_TRIGGERS (0x80)
 #define SCICLIENT_LPM_GPIO2_CONF (0x32)
@@ -720,72 +724,93 @@ static void Lpm_ClearPmicInterrupts(void)
 #define SCICLIENT_LPM_GPIO1_8_FALL 0xFF
 #define SCICLIENT_LPM_GPIO1_8_RISE 0xF7
 
-static void Lpm_setupPmic(void)
+static void Lpm_dumpPmic(void)
 {
-    /* Write 0x02 to FSM_NSLEEP_TRIGGERS register
-       This should happen before clearing the interrupts */
+	for (uint8_t i = 1; i < 0xF2; i++)
+	    Lpm_debugReadPmic(i);
+}
 
-    /* If you clear the interrupts before you write the NSLEEP bits,
-     * it will transition to S2R state.
-     * This is because as soon as you write NSLEEP2 to 0x0,
-     * the trigger is present to move to S2R state.
-     * By setting the NSLEEP bits before you clear the interrupts,
-     * you can configure both NSLEEP bits before the PMIC reacts to the change.
-     */
+#ifndef __maybe_unused
+#define __maybe_unused __attribute__((__unused__)
+#endif
 
-    /* Change FSM_NSLEEP_TRIGGERS: NSLEEP1=high, NSLEEP2=high */
-    Lpm_writePmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR, 0x03);
-    Lpm_debugFullPrintf("Lpm_setupPmic: Write FSM_NSLEEP_TRIGGERS\n");
-    Lpm_debugReadPmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR);
+__maybe_unused static void Lpm_setupPmic(void)
+{
+	uint8_t val;
 
-    /* Clear interrupts */
-    Lpm_i2cConfigWkup(PMIC_ADDR);
-    Lpm_ClearPmicInterrupts();
+	/* Write 0x02 to FSM_NSLEEP_TRIGGERS register
+	   This should happen before clearing the interrupts */
 
-    /* Change SCICLIENT_LPM_FSM_I2C_TRIGGERS */
-    Lpm_writePmic(PMIC_FSM_I2C_TRIGGERS_REGADDR, SCICLIENT_LPM_FSM_I2C_TRIGGERS);
-    Lpm_debugFullPrintf("Lpm_setupPmic: Write FSM_TRIGGERS\n");
-    Lpm_debugReadPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
+	/* If you clear the interrupts before you write the NSLEEP bits,
+	 * it will transition to S2R state.
+	 * This is because as soon as you write NSLEEP2 to 0x0,
+	 * the trigger is present to move to S2R state.
+	 * By setting the NSLEEP bits before you clear the interrupts,
+	 * you can configure both NSLEEP bits before the PMIC reacts to the change.
+	 */
+Lpm_dumpPmic();
+	/* Change FSM_NSLEEP_TRIGGERS: NSLEEP1=high, NSLEEP2=high */
+	Lpm_writePmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR, 0x03);
+	Lpm_debugFullPrintf("Lpm_setupPmic: Write FSM_NSLEEP_TRIGGERS\n");
+	Lpm_debugReadPmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR);
+
+	/* Clear interrupts */
+	Lpm_i2cConfigWkup(PMIC_ADDR);
+	Lpm_ClearPmicInterrupts();
+
+	/* unmask NSLEEP2 */
+	val = Lpm_readPmic(PMIC_CONFIG1_REGADDR);
+	val &= ~(PMIC_NSLEEP2_MASK | PMIC_NSLEEP1_MASK);
+	Lpm_writePmic(PMIC_CONFIG1_REGADDR, val);
+	Lpm_debugFullPrintf("Lpm_setupPmic: Write PMIC_CONFIG1_REGADDR\n");
+	Lpm_debugReadPmic(PMIC_CONFIG1_REGADDR);
 
 #if 0
-    /* Configure GPIO4_CONF: input, pull-down, signal LP_WKUP1 */
-    Lpm_writePmic(0x34, 0xca);
-    Lpm_debugFullPrintf("Lpm_setupPmic: Write GPIO4_CONF\n");
-    Lpm_debugReadPmic(0x34);
+	/* Configure GPIO4_CONF: input, pull-down, signal LP_WKUP1 */
+	Lpm_writePmic(0x34, 0xca);
+	Lpm_debugFullPrintf("Lpm_setupPmic: Write GPIO4_CONF\n");
+	Lpm_debugReadPmic(0x34);
 
-    /* Configure INT_GPIO1_8 (enable GPIO4 interrupt): clear GPIO4_INT */
-    Lpm_writePmic(0x64, SCICLIENT_LPM_GPIO4_BIT);
-    Lpm_debugFullPrintf("Lpm_setupPmic: Write INT_GPIO1_8\n");
-    Lpm_debugReadPmic(0x64);
+	/* Configure INT_GPIO1_8 (enable GPIO4 interrupt): clear GPIO4_INT */
+	Lpm_writePmic(0x64, SCICLIENT_LPM_GPIO4_BIT);
+	Lpm_debugFullPrintf("Lpm_setupPmic: Write INT_GPIO1_8\n");
+	Lpm_debugReadPmic(0x64);
 
-    /* Configure MASK_GPIO*_RISE */
-    Lpm_writePmic(0x50, SCICLIENT_LPM_GPIO1_8_RISE);
-    Lpm_writePmic(0x51, 0x3F);
+	/* Configure MASK_GPIO*_RISE */
+	Lpm_writePmic(0x50, SCICLIENT_LPM_GPIO1_8_RISE);
+	Lpm_writePmic(0x51, 0x3F);
 
-    /* Configure MASK_SCICLIENT_LPM_GPIO1_8_FALL (configure GPIO4 falling edge interrupt): enable INT on GPIO4 */
-    Lpm_writePmic(0x4F, SCICLIENT_LPM_GPIO1_8_FALL);
-    Lpm_debugFullPrintf("Lpm_setupPmic: Write MASK_SCICLIENT_LPM_GPIO1_8_FALL\n");
-    Lpm_debugReadPmic(0x4F);
+	/* Configure MASK_SCICLIENT_LPM_GPIO1_8_FALL (configure GPIO4 falling edge interrupt): enable INT on GPIO4 */
+	Lpm_writePmic(0x4F, SCICLIENT_LPM_GPIO1_8_FALL);
+	Lpm_debugFullPrintf("Lpm_setupPmic: Write MASK_SCICLIENT_LPM_GPIO1_8_FALL\n");
+	Lpm_debugReadPmic(0x4F);
 
-    {
-	    uint8_t buf;
+	{
+		uint8_t buf;
 
-	    /* Put GPIO6 as output push-pull no pull-up or pull down */
-	    Lpm_writePmic(SCICLIENT_LPM_GPIO6_CONF,
-			   1 << SCICLIENT_LPM_DIR_SHIFT | 0 << SCICLIENT_LPM_OD_SHIFT);
-	    /* GPIO_OUT_1 */
-	    buf = Lpm_readPmic(0x3D) | SCICLIENT_LPM_EN_DDR_RET_1V1; // 1<<5, GPIO6_OUT on
-	    Lpm_writePmic(0x3D, buf);
-    }
+		/* Put GPIO6 as output push-pull no pull-up or pull down */
+		Lpm_writePmic(SCICLIENT_LPM_GPIO6_CONF,
+			      1 << SCICLIENT_LPM_DIR_SHIFT | 0 << SCICLIENT_LPM_OD_SHIFT);
+		/* GPIO_OUT_1 */
+		buf = Lpm_readPmic(0x3D) | SCICLIENT_LPM_EN_DDR_RET_1V1; // 1<<5, GPIO6_OUT on
+		Lpm_writePmic(0x3D, buf);
+	}
 #endif
-    /* Write magic number to scratch register to indicate the suspend */
-    Lpm_writePmic(SCICLIENT_LPM_SCRATCH_PAD_REG_3, SCICLIENT_LPM_MAGIC_SUSPEND);
-    Lpm_debugReadPmic(SCICLIENT_LPM_SCRATCH_PAD_REG_3);
+	/* Write magic number to scratch register to indicate the suspend */
+	Lpm_writePmic(SCICLIENT_LPM_SCRATCH_PAD_REG_3, SCICLIENT_LPM_MAGIC_SUSPEND);
+	Lpm_debugReadPmic(SCICLIENT_LPM_SCRATCH_PAD_REG_3);
 
-    Lpm_debugReadPmic(SCICLIENT_LPM_INT_TOP);
+	Lpm_debugReadPmic(SCICLIENT_LPM_INT_TOP);
 
-    /* Change FSM_NSLEEP_TRIGGERS: NSLEEP1=low, NSLEEP2=low */
-    Lpm_writePmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR, 0x00);
+	/* Change SCICLIENT_LPM_FSM_I2C_TRIGGERS */
+	Lpm_writePmic(PMIC_FSM_I2C_TRIGGERS_REGADDR, 0x1);
+	Lpm_debugFullPrintf("Lpm_setupPmic: Write FSM_TRIGGERS\n");
+	Lpm_debugReadPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
+
+	/* Change FSM_NSLEEP_TRIGGERS: NSLEEP1=high, NSLEEP2=low */
+	Lpm_writePmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR, 0x00);
+	for (unsigned int i = 100000; i > 0; i--) Lpm_i2cRead(0x86);
+Lpm_dumpPmic();
 }
 
 /*
@@ -809,8 +834,9 @@ void Lpm_enterRetention(void)
 	// TODO Lpm_setupPmic();
 	dbg_line("Lpm_enterRetention: Done! Going to wait now");
 
+	Lpm_dumpPmic();
+
 //i2cset -f -y -m 0xFF -r -a 0 0x48 0x86 0x2
-//	Lpm_writePmic(0x86, 0x00);
 	Lpm_setupPmic();
 	while(1){};
 }
