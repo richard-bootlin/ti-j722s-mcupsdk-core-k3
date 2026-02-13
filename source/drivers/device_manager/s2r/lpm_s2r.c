@@ -305,6 +305,7 @@ static void Lpm_ddrEnterRetention(void)
         dbg_puts("LP");
     dbg_line("DDR4");
 
+#if 0
 	/* Unlock wkup_ctrl_mmr region 2 & 6 */
 	ctrlmmr_unlock(WKUP_CTRL_MMR_BASE, 2); // same as Lpm_ddrUnlockWKUP(2)
 	ctrlmmr_unlock(WKUP_CTRL_MMR_BASE, 6);
@@ -312,7 +313,7 @@ static void Lpm_ddrEnterRetention(void)
 	/* Unlock mcu_ctrl_mmr region 0,2 */
 	ctrlmmr_unlock(MCU_CTRL_MMR_BASE, 0); // same as Lpm_ddrUnlockMCU(0)
 	ctrlmmr_unlock(MCU_CTRL_MMR_BASE, 2);
-
+#endif
 
 	/* start of enter_io_ddr_mode */
 	/* Disable self refresh auto entry and exit */
@@ -751,7 +752,6 @@ __maybe_unused static void Lpm_setupPmic(void)
 Lpm_dumpPmic();
 	/* Change FSM_NSLEEP_TRIGGERS: NSLEEP1=high, NSLEEP2=high */
 	Lpm_writePmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR, 0x03);
-	Lpm_debugFullPrintf("%s: Write FSM_NSLEEP_TRIGGERS\n", __func__);
 	Lpm_debugReadPmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR);
 
 	/* Clear interrupts */
@@ -762,7 +762,6 @@ Lpm_dumpPmic();
 	val = Lpm_readPmic(PMIC_CONFIG1_REGADDR);
 	val &= ~(PMIC_NSLEEP2_MASK | PMIC_NSLEEP1_MASK);
 	Lpm_writePmic(PMIC_CONFIG1_REGADDR, val);
-	Lpm_debugFullPrintf("%s: Write PMIC_CONFIG1_REGADDR\n", __func__);
 	Lpm_debugReadPmic(PMIC_CONFIG1_REGADDR);
 
 	/* Write magic number to scratch register to indicate the suspend */
@@ -771,16 +770,17 @@ Lpm_dumpPmic();
 
 	Lpm_debugReadPmic(SCICLIENT_LPM_INT_TOP);
 
+	/* Change FSM_NSLEEP_TRIGGERS: NSLEEP1=high, NSLEEP2=low */
+	Lpm_writePmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR, 0x01);
 	/*
 	 * TODO: this triggers the suspend sequence right away,
 	 * and also wake up right away
 	 */
-	Lpm_writePmic(PMIC_FSM_I2C_TRIGGERS_REGADDR, 0x1);
-	Lpm_debugFullPrintf("%s: Write FSM_TRIGGERS\n", __func__);
+	val = Lpm_readPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
+	val |= 0x1;
+	Lpm_writePmic(PMIC_FSM_I2C_TRIGGERS_REGADDR, val);
 	Lpm_debugReadPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
 
-	/* Change FSM_NSLEEP_TRIGGERS: NSLEEP1=high, NSLEEP2=low */
-	Lpm_writePmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR, 0x00);
 }
 
 /*
