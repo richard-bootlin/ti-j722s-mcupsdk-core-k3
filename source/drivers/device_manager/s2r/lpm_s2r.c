@@ -777,7 +777,8 @@ Lpm_dumpPmic();
 	 * and also wake up right away
 	 */
 	val = Lpm_readPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
-	val |= 0x1;
+	// val |= 0x1; // pmic doesn't wakeup
+	val = 0x1; // pmic cuts power and restart right away
 	Lpm_writePmic(PMIC_FSM_I2C_TRIGGERS_REGADDR, val);
 	Lpm_debugReadPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
 
