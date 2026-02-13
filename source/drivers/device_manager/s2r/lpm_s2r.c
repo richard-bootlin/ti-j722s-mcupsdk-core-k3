@@ -46,6 +46,8 @@
 #include <ddr_functions.h>
 #include <DDRSS_addr_map_sfr_offs_ew_32bit.h>
 #include <lib/bitops.h>
+#include <lpm/cdns_generated_defines/cdns_lpddr4_reg_config_3733_svb.h>
+#include <lpm/cdns_generated_defines/cslr_emif.h>
 #include <lpm/timeout.h>
 #include <wkup_ctrl_mmr.h>
 #include "dbg_uart.c"
@@ -126,9 +128,35 @@ static void Lpm_cleanAllDCache(void)
 // defined in source/board/pmic/pmic_lld/src/pmic_fsm_priv.h
 #define PMIC_FSM_NSLEEP_TRIGGERS_REGADDR          (0x86U)
 
+#ifndef s32
+#define s32 int32_t
+#endif
+#ifndef u32
+#define u32 uint32_t
+#endif
+
+#define SOC_read32(a) readl(a)
+#define SOC_write32(a,v) writel(v,a)
 
 #define ctrlmmr_raw_readl readl
 #define ctrlmmr_raw_writel writel
+
+
+static void asm_func(void)
+{
+	asm ("");
+}
+
+void delay_1us(void)
+{
+	/* This while-loop takes 2 instructions. */
+	unsigned long x = DM_R5_CORE_FREQUENCY_MHZ / 2;
+
+	while (x != 0U) {
+		x--;
+		asm_func();
+	}
+}
 
 static inline uint32_t readl(uint32_t a)
 {
@@ -139,6 +167,7 @@ static inline void writel(uint32_t v, uint32_t a)
 {
 	*(volatile uint32_t *) (a) = v;
 }
+
 
 #define PLL_16FFT_CTRL_OFFSET    ((uint32_t) 0x20UL)
 #define PLL_16FFT_CTRL_BYPASS_EN BIT(31)
@@ -287,6 +316,32 @@ static void enter_lpm_self_refresh(void)
 	}
 }
 
+static s32 load_magic_words_through_mmr(void)
+{
+	u32 timeout = TIMEOUT_10_MS;
+	s32 ret = 0;
+
+	/* Program the OFF mode MMR in case of IO Only plus DDR mode. */
+	writel(WKUP_CANUART_OFF_MAGIC_WORD, WKUP_CTRL_MMR_BASE + CANUART_WAKE_OFF_MODE);
+
+	/* Program the CAN IO MMR. */
+	writel(0x0U, WKUP_CTRL_MMR_BASE + CANUART_WAKE_CTRL);
+	writel((WKUP_CANUART_MAGIC_WRD | WKUP_CANUART_MAGIC_WRD_LD_EN), WKUP_CTRL_MMR_BASE + CANUART_WAKE_CTRL);
+
+	/* Wait for CAN_ONLY_IO signal to be 1 */
+	while ((timeout > 0U) && ((readl(WKUP_CTRL_MMR_BASE + CANUART_WAKE_STAT1)) != WKUP_CANUART_CAN_IO_ISO_SET)) {
+		--timeout;
+	}
+	if (timeout == 0U) {
+		ret = -1;
+	}
+
+	/* Clear the magic word to prevent any other word loading */
+	writel((~WKUP_CANUART_MAGIC_WRD) | WKUP_CANUART_MAGIC_WRD_LD_DIS, WKUP_CTRL_MMR_BASE + CANUART_WAKE_CTRL);
+
+	return ret;
+}
+
 static void Lpm_ddrEnterRetention(void)
 {
 #define CDNS_DENALI_CTL_0                                       0x0000U
@@ -305,7 +360,6 @@ static void Lpm_ddrEnterRetention(void)
         dbg_puts("LP");
     dbg_line("DDR4");
 
-#if 0
 	/* Unlock wkup_ctrl_mmr region 2 & 6 */
 	ctrlmmr_unlock(WKUP_CTRL_MMR_BASE, 2); // same as Lpm_ddrUnlockWKUP(2)
 	ctrlmmr_unlock(WKUP_CTRL_MMR_BASE, 6);
@@ -313,7 +367,10 @@ static void Lpm_ddrEnterRetention(void)
 	/* Unlock mcu_ctrl_mmr region 0,2 */
 	ctrlmmr_unlock(MCU_CTRL_MMR_BASE, 0); // same as Lpm_ddrUnlockMCU(0)
 	ctrlmmr_unlock(MCU_CTRL_MMR_BASE, 2);
-#endif
+
+	if (load_magic_words_through_mmr() != 0)
+		dbg_line("load_magic_words_through_mmr failed");
+
 
 	/* start of enter_io_ddr_mode */
 	/* Disable self refresh auto entry and exit */
@@ -334,7 +391,359 @@ static void Lpm_ddrEnterRetention(void)
 
 	enter_lpm_self_refresh();
 	put_ddrss_in_data_retention_thru_wkup_mmr(DDR16SS_RETENTION_EN);
+
+	/* Ensure that PMIC EN control from SOC is selected */
+	writel((WKUP0_PMCTRL_SYS_LPM_EN_PMIC | WKUP0_LPM_PMIC_OUT_EN), (WKUP_CTRL_MMR_BASE + PMCTRL_SYS));
+
+	/* Enter IO DDR mode */
+	writel((WKUP0_PMCTRL_SYS_LPM_EN_PMIC | WKUP0_LPM_PMIC_OUT_DIS), WKUP_CTRL_MMR_BASE + PMCTRL_SYS);
+	writel(WWD_STOP, WKUP_CTRL_MMR_BASE + WKUP_WWD0_CTRL);
+
 }
+
+#define DDRSS_PI_REGISTER_BLOCK__OFFS   0x2000U
+#define DDRSS_Data_Slice_0_REGISTER_BLOCK__OFFS 0x4000U
+#define DDRSS_Data_Slice_1_REGISTER_BLOCK__OFFS 0x4400U
+#define DDRSS_Data_Slice_2_REGISTER_BLOCK__OFFS 0x4800U
+#define DDRSS_Data_Slice_3_REGISTER_BLOCK__OFFS 0x4c00U
+#define DDRSS_Address_Slice_0_REGISTER_BLOCK__OFFS      0x5000U
+#define DDRSS_Address_Slice_1_REGISTER_BLOCK__OFFS      0x5400U
+#define DDRSS_Address_Slice_2_REGISTER_BLOCK__OFFS      0x5800U
+#define DDRSS_PHY_Core_REGISTER_BLOCK__OFFS     0x5c00U
+
+#define SDRAM_IDX  0x12
+#define REGION_IDX 0x12
+#define CSL_EMIF_SSCFG_V2A_CTL_REG                                             (0x00000020U)
+
+struct emif_handle_s Emifhandle;
+
+static void configure_sdram_region_idx(struct emif_handle_s *h, u32 sdram_idx, u32 region_idx)
+{
+	u32 rd_val;
+
+	rd_val = SOC_read32(h->ss_cfg_base_addr + CSL_EMIF_SSCFG_V2A_CTL_REG);
+	rd_val = (rd_val & 0xFFFFFC00U);
+	rd_val = rd_val | (sdram_idx << 5) | (region_idx);
+	SOC_write32((h->ss_cfg_base_addr + CSL_EMIF_SSCFG_V2A_CTL_REG), rd_val); /* Programming the region_idx and sdram_idx fields for address mapping [Set 9:5 and 4:0 to 0x11 for 8GB] */
+}
+
+static void start_PI_CTL_init(struct emif_handle_s *h)
+{
+	u32 wr_init_val;
+	u32 i;
+
+	if (h->is_ddr4_mem == 1U) {
+		wr_init_val = ((DDR4_DRAM_CLASS_REG_VALUE << 8U) | 0x1U);
+	} else { wr_init_val = ((LPDDR4_DRAM_CLASS_REG_VALUE << 8U) | 0x1U); }                                                  /* Decide init value based on memory type */
+	SOC_write32(h->ctl_cfg_base_addr + (u32) DDRSS_PI_REGISTER_BLOCK__OFFS + (u32) DENALI_PI_0__SFR_OFFS, wr_init_val);     /* Set START bit in register for PI module */
+	for (i = 0; i < 500U; i++) {
+		delay_1us();
+	}
+	SOC_write32(h->ctl_cfg_base_addr + (u32) DENALI_CTL_0__SFR_OFFS, wr_init_val); /* Set START bit in register for controller */
+}
+
+static void poll_for_init_completion(struct emif_handle_s *h)
+{
+#if defined(CTL_INIT_ONLY)
+	while (((SOC_read32(h->ctl_cfg_base_addr + DENALI_CTL_350__SFR_OFFS)) & 0x02000000) != 0x02000000) { /* Poll for CTL Init completion */
+	}
+#elif defined(PI_INIT_ONLY)
+	while (((SOC_read32(h->ctl_cfg_base_addr + DDRSS_PI_REGISTER_BLOCK__OFFS + DENALI_PI_87__SFR_OFFS)) & 0x1) != 0x1) { /* Poll for PI Init completion */
+	}
+#else
+    Lpm_debugFullPrintf("wait for PI init\n");
+	while (((SOC_read32(h->ctl_cfg_base_addr + (u64) DDRSS_PI_REGISTER_BLOCK__OFFS + (u64) DENALI_PI_87__SFR_OFFS)) & 0x1U) != 0x1U) {      /* Poll for PI Init completion */
+	}
+    Lpm_debugFullPrintf("wait for ctl init\n");
+	while (((SOC_read32(h->ctl_cfg_base_addr + (u64) DENALI_CTL_350__SFR_OFFS)) & 0x02000000U) != 0x02000000U) {                            /* Poll for CTL Init completion */
+	}
+#endif
+}
+
+void configure_CTL_registers(struct emif_handle_s *h)
+{
+	uint32_t DDR_CTL_REG_BASE = h->ctl_cfg_base_addr;
+	uint32_t wdata_340, wdata_322, wdata_323;
+	uint32_t cs_msk, cs_val_lower, cs_val_upper, i;
+
+	for (i = 0; i <= 434U; i++) {
+		SOC_write32(DDR_CTL_REG_BASE + (i * 4U), denali_ctl_data[i]);
+	}
+
+	/* Disable bank group rotation for DDR4 */
+#if defined(DDR4_MEM)
+	wdata_340 = DENALI_CTL_340_DATA;
+	wdata_340 = wdata_340 & 0xFEFFFFFF;
+	SOC_write32(DDR_CTL_REG_BASE + DENALI_CTL_340__SFR_OFFS, wdata_340);
+#endif
+
+	/*
+	 * DENALI_CTL_322_DATA - BANK_DIFF_1:RW:24:2:=0x01 BANK_DIFF_0:RW:16:2:=0x01 ZQ_CAL_LATCH_MAP_1:RW_D:8:2:=0x00 ZQ_CAL_START_MAP_1:RW_D:0:2:=0x00
+	 * DENALI_CTL_323_DATA - COL_DIFF_1:RW:24:4:=0x00 COL_DIFF_0:RW:16:4:=0x00 ROW_DIFF_1:RW:8:3:=0x01 ROW_DIFF_0:RW:0:3:=0x01
+	 */
+#if defined(DDR4_MEM)
+	/* 10 col bits (diff=0), 17 row bits (diff=1), 4 bank bits(diff=0) */
+	wdata_322 = DENALI_CTL_322_DATA;
+	wdata_322 = wdata_322 & 0xFFFF; /* Reset 31:16 bits to 0 [BANK_DIFF_1:RW:24:2:=0x01 BANK_DIFF_0:RW:16:2:=0x01] */
+	wdata_323 = 0x00000101;         /* Row difference set to 1 [17 bits for row] */
+#else
+	/* 10 col bits (diff=0), 17 row bits (diff=1), 3 bank bits(diff=1) */
+	wdata_322 = 0x01010000;                                 /* DENALI_CTL_322_DATA; */
+	wdata_322 = ((wdata_322 & 0xFFFFU) | 0x01010000U);      /* Reset 31:16 bits to 0x0101 [BANK_DIFF_1:RW:24:2:=0x01 BANK_DIFF_0:RW:16:2:=0x01] */
+	wdata_323 = 0x00000101;                                 /* Row difference set to 1 [17 bits for row] */
+#endif
+	SOC_write32(DDR_CTL_REG_BASE + (uint32_t) DENALI_CTL_322__SFR_OFFS, wdata_322);
+	SOC_write32(DDR_CTL_REG_BASE + (uint32_t) DENALI_CTL_323__SFR_OFFS, wdata_323);
+
+	/*
+	 * Chip Select bits
+	 * Last bit as chip select for DDR4. For LPDDR4, default would work
+	 */
+#if defined(DDR4_MEM)
+	cs_val_lower = 0x3fff0000;      /* cs = 0 range */
+	cs_val_upper = 0x7fff4000;      /* cs = 1 range */
+	SOC_write32(DDR_CTL_REG_BASE + DENALI_CTL_324__SFR_OFFS, cs_val_lower);
+	SOC_write32(DDR_CTL_REG_BASE + DENALI_CTL_326__SFR_OFFS, cs_val_upper);
+#endif
+}
+
+void configure_PI_registers(struct emif_handle_s *h)
+{
+	uint32_t DDR_CTL_PI_REG_BASE = (h->ctl_cfg_base_addr) + (uint32_t) DDRSS_PI_REGISTER_BLOCK__OFFS;
+	uint32_t wdata_145, i;
+
+	for (i = 0; i <= 423U; i++) {
+		SOC_write32(DDR_CTL_PI_REG_BASE + (i * 4U), denali_pi_data[i]);
+	}
+
+	/* Disable bank group rotation for DDR4 */
+#if defined(DDR4_MEM)
+	wdata_145 = DENALI_PI_145_DATA;
+	wdata_145 = wdata_145 & 0xFFFFFEFF;
+	SOC_write32(DDR_CTL_PI_REG_BASE + DENALI_PI_145__SFR_OFFS, wdata_145);
+#endif
+}
+
+void configure_data_slice0_registers(struct emif_handle_s *h)
+{
+	uint32_t DDR_CTL_DATA_SLICE_0_REG_BASE = (h->ctl_cfg_base_addr) + (uint32_t) DDRSS_Data_Slice_0_REGISTER_BLOCK__OFFS;
+	uint32_t i;
+
+	for (i = 0; i <= 136U; i++) {
+		{
+			SOC_write32(DDR_CTL_DATA_SLICE_0_REG_BASE + (i * 4U), denali_data_slice0[i]);
+		}
+	}
+}
+
+void configure_data_slice1_registers(struct emif_handle_s *h)
+{
+	uint32_t DDR_CTL_DATA_SLICE_1_REG_BASE = (h->ctl_cfg_base_addr) + (uint32_t) DDRSS_Data_Slice_1_REGISTER_BLOCK__OFFS;
+	uint32_t i;
+
+	for (i = 0; i <= 136U; i++) {
+		{
+			SOC_write32(DDR_CTL_DATA_SLICE_1_REG_BASE + (i * 4U), denali_data_slice1[i]);
+		}
+	}
+}
+
+void configure_data_slice2_registers(struct emif_handle_s *h)
+{
+	uint32_t DDR_CTL_DATA_SLICE_2_REG_BASE = (h->ctl_cfg_base_addr) + (uint32_t) DDRSS_Data_Slice_2_REGISTER_BLOCK__OFFS;
+	uint32_t i;
+
+	for (i = 0; i <= 136U; i++) {
+		{
+			SOC_write32(DDR_CTL_DATA_SLICE_2_REG_BASE + (i * 4U), denali_data_slice2[i]);
+		}
+	}
+}
+
+void configure_data_slice3_registers(struct emif_handle_s *h)
+{
+	uint32_t DDR_CTL_DATA_SLICE_3_REG_BASE = (h->ctl_cfg_base_addr) + (uint32_t) DDRSS_Data_Slice_3_REGISTER_BLOCK__OFFS;
+	uint32_t i;
+
+	for (i = 0; i <= 136U; i++) {
+		{
+			SOC_write32(DDR_CTL_DATA_SLICE_3_REG_BASE + (i * 4U), denali_data_slice3[i]);
+		}
+	}
+}
+
+void configure_address_slice0_registers(struct emif_handle_s *h)
+{
+	uint32_t DDR_CTL_ADDR_SLICE_0_REG_BASE = (h->ctl_cfg_base_addr) + (uint32_t) DDRSS_Address_Slice_0_REGISTER_BLOCK__OFFS;
+	uint32_t i;
+
+	for (i = 0; i <= 48U; i++) {
+		SOC_write32(DDR_CTL_ADDR_SLICE_0_REG_BASE + (i * 4U), denali_addr_slice0[i]);
+	}
+}
+
+void configure_address_slice1_registers(struct emif_handle_s *h)
+{
+	uint32_t DDR_CTL_ADDR_SLICE_1_REG_BASE = (h->ctl_cfg_base_addr) + (uint32_t) DDRSS_Address_Slice_1_REGISTER_BLOCK__OFFS;
+	uint32_t i;
+
+	for (i = 0; i <= 48U; i++) {
+		SOC_write32(DDR_CTL_ADDR_SLICE_1_REG_BASE + (i * 4U), denali_addr_slice1[i]);
+	}
+}
+
+void configure_address_slice2_registers(struct emif_handle_s *h)
+{
+	uint32_t DDR_CTL_ADDR_SLICE_2_REG_BASE = (h->ctl_cfg_base_addr) + (uint32_t) DDRSS_Address_Slice_2_REGISTER_BLOCK__OFFS;
+	uint32_t i;
+
+	for (i = 0; i <= 48U; i++) {
+		SOC_write32(DDR_CTL_ADDR_SLICE_2_REG_BASE + (i * 4U), denali_addr_slice2[i]);
+	}
+}
+
+void configure_ddrphy_registers(struct emif_handle_s *h)
+{
+	uint32_t DDR_CTL_PHY_CORE_REG_BASE = (h->ctl_cfg_base_addr) + (uint32_t) DDRSS_PHY_Core_REGISTER_BLOCK__OFFS;
+	uint32_t wdata_1826, i;
+
+	/* Program the PHY */
+	for (i = 0; i < 132U; i++) {
+		SOC_write32(DDR_CTL_PHY_CORE_REG_BASE + (i * 4U), denali_phy_data[i]);
+	}
+
+	/* PHY_SW_GRP0_SHIFT_0:RW+:24:5:=0x00 PHY_FREQ_SEL_INDEX:RW+:16:2:=0x00 PHY_FREQ_SEL_MULTICAST_EN:RW+:8:1:=0x01 PHY_FREQ_SEL_FROM_REGIF:RW_D:0:1:=0x00 */
+	SOC_write32(DDR_CTL_PHY_CORE_REG_BASE + (uint32_t) DENALI_PHY_1793__SFR_OFFS, 0x00010000);
+
+	/* Set pll_postdiv to 0 for LPDDR4 memory */
+#if (defined(LPDDR4_MEM) || defined(POST_PLLDIV_0))
+#if (!(defined(SPEED_250_MTPS)))                /* pll_postdiv should be non-zero for 250MTPS */
+	wdata_1826 = 0x00041b42U & 0xFFFFF1FFU; /* Set 11:9 bits to 0 - pll_postdiv in PHY_LP4_BOOT_PLL_CTRL field //#define             DENALI_PHY_1826_DATA 0x00041b42 // */
+	SOC_write32(DDR_CTL_PHY_CORE_REG_BASE + (uint32_t) DENALI_PHY_1826__SFR_OFFS, wdata_1826);
+#endif
+#endif
+}
+
+/*
+ * -----------------------------------------------------------------------
+ * PHY Address Space
+ * -----------------------------------------------------------------------
+ * Data Slice 0: PHY_BASE_ADDR + 0 DENALI_PHY_0
+ * Data Slice 1: PHY_BASE_ADDR + 256 DENALI_PHY_256
+ * Data Slice 2: PHY_BASE_ADDR + 512 DENALI_PHY_512
+ * Data Slice 3: PHY_BASE_ADDR + 768 DENALI_PHY_768
+ * Address Slice 0: PHY_BASE_ADDR + 1024 DENALI_PHY_1024
+ * Address Slice 1: PHY_BASE_ADDR + 1280 DENALI_PHY_1280
+ * Address Slice 2: PHY_BASE_ADDR + 1536 DENALI_PHY_1536
+ * PHY Core: PHY_AC_BASE_ADDR DENALI_PHY_1792
+ * -----------------------------------------------------------------------
+ */
+void configure_PHY_registers(struct emif_handle_s *h)
+{
+	configure_data_slice0_registers(h);
+	configure_data_slice1_registers(h);
+	configure_data_slice2_registers(h);
+	configure_data_slice3_registers(h);
+	configure_address_slice0_registers(h);
+	configure_address_slice1_registers(h);
+	configure_address_slice2_registers(h);
+	configure_ddrphy_registers(h);
+}
+
+s32 ddr_exit_low_power_mode(void)
+{
+	u32 val;
+	s32 ret = 0;
+
+	u32 wr_val;
+	u32 i;
+	u32 rd_val;
+	u32 ctl_addr = (Emifhandle.ctl_cfg_base_addr);
+
+	/* Use WKUP_CTRL.WKUP_WWD0_CTRL to ungate clock to RTI */
+	writel(WWD_RUN, WKUP_CTRL_MMR_BASE + WKUP_WWD0_CTRL);
+    Lpm_debugFullPrintf("configure_sdram_region_idx\n");
+	configure_sdram_region_idx(&Emifhandle, SDRAM_IDX, REGION_IDX);
+    Lpm_debugFullPrintf("configure_CTL_registers\n");
+	configure_CTL_registers(&Emifhandle);           /* Configure Controller registers */
+    Lpm_debugFullPrintf("configure_PI_registers\n");
+	configure_PI_registers(&Emifhandle);            /* Configure PI registers */
+    Lpm_debugFullPrintf("configure_PHY_registers\n");
+	configure_PHY_registers(&Emifhandle);           /* Configure PHY registers */
+	//restore_registers_optimized(&Emifhandle);       /* Restore register values before LPM */
+
+    Lpm_debugFullPrintf("end configure_PHY_registers\n");
+	/* PHY_SET_DFI_INPUT_3:RW_D:24:4:=0x00 PHY_SET_DFI_INPUT_2:RW_D:16:4:=0x00 PHY_SET_DFI_INPUT_1:RW_D:8:4:=0x00 PHY_SET_DFI_INPUT_0:RW_D:0:4:=0x00 */
+	rd_val = SOC_read32(ctl_addr + CSL_EMIF_CTLCFG_DENALI_PHY_1820);
+	rd_val = (rd_val | 0x40000U);
+	SOC_write32((ctl_addr + CSL_EMIF_CTLCFG_DENALI_PHY_1820), rd_val);
+
+	/* PI_TCMD_GAP:RW:16:16:=0x0000 PI_NOTCARE_PHYUPD:RW:8:2:=0x00 PI_INIT_LVL_EN:RW:0:1:=0x00 */
+	rd_val = SOC_read32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_4);
+	rd_val = (rd_val & 0xFFFFFF00U) | (0x0U);
+	SOC_write32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_4, rd_val);
+
+	/* PHY_INDEP_TRAIN_MODE:RW:24:1:=0x01 ODT_VALUE:RW:16:2:=0x01 NO_MRW_INIT:RW:8:1:=0x00 DFI_CMD_RATIO:RD:0:1:=0x00 */
+	rd_val = SOC_read32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_CTL_20);
+	rd_val = (rd_val & 0x00FFFFFFU) | (0x1U << 24);
+	SOC_write32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_CTL_20, rd_val);
+
+	/* DFIBUS_FREQ_F1:RW:24:5:=0x01 DFIBUS_FREQ_F0:RW:16:5:=0x00 PHY_INDEP_INIT_MODE:RW:8:1:=0x01 TSREF2PHYMSTR:RW:0:6:=0x10 */
+	rd_val = SOC_read32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_CTL_21);
+	rd_val = (rd_val & 0xFFFF00FFU) | (0x1U << 8);
+	SOC_write32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_CTL_21, rd_val);
+
+	/* PI_DLL_RST_DELAY:RW:16:16:=0x0000 PI_DRAM_INIT_EN:RW:8:1:=0x00 PI_DLL_RST:RW:0:1:=0x00 */
+	rd_val = SOC_read32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_150);
+	rd_val = (rd_val & 0xFFFF0000U) | (0x101U);
+	SOC_write32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_150, rd_val);
+
+	/* SREFRESH_EXIT_NO_REFRESH:RW:24:1:=0x00 PWRUP_SREFRESH_EXIT:RW:16:1:=0x00 TCMDCKE_F2:RW:8:5:=0x03 TCMDCKE_F1:RW:0:5:=0x03 */
+	rd_val = SOC_read32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_CTL_106);
+	rd_val = (rd_val & 0xFF00FFFFU) | (0x0U << 16);
+	SOC_write32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_CTL_106, rd_val);
+
+	/* PI_SREF_ENTRY_REQ:WR:24:1:=0x00 PI_SREFRESH_EXIT_NO_REFRESH:RW:16:1:=0x00 PI_PWRUP_SREFRESH_EXIT:RW+:8:1:=0x01 PI_MC_PWRUP_SREFRESH_EXIT:RW+:0:1:=0x00 */
+	rd_val = SOC_read32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_146);
+	rd_val = (rd_val & 0xFFFF00FFU) | (0x1U << 8);
+	SOC_write32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_146, rd_val);
+
+    Lpm_debugFullPrintf("WriteMMR\n");
+	/* PI_DRAM_INIT_EN=1 */
+	Write_MMR_Field(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_150, 0x1, 1, 8);
+
+	/*
+	 * Set following equal to the frequency used for low-power retention entry
+	 * DFIBUS_BOOT_FREQ, INIT_FREQ, PI_FREQ_RETENTION_NUM, PI_INIT_WORK_FREQ
+	 */
+	Write_MMR_Field(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_CTL_180, 0x2, 2, 8);      /* DENALI_CTL_180 DFIBUS_BOOT_FREQ bits 9:8 */
+	Write_MMR_Field(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_CTL_180, 0x2, 2, 0);      /* DENALI_CTL_180 INIT_FREQ bits 1:0 */
+	Write_MMR_Field(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_165, 0x2, 5, 16);      /* DENALI_PI_165 PI_FREQ_RETENTION_NUM bits 20:16 */
+	Write_MMR_Field(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_11, 0x2, 5, 0);        /* DENALI_PI_11 PI_INIT_WORK_FREQ bits 4:0 */
+
+    Lpm_debugFullPrintf("put_ddrss_in_data_retention_thru_wkup_mmr\n");
+	/* De-asserting data retention pin and wake Control bits */
+	put_ddrss_in_data_retention_thru_wkup_mmr(DDR16SS_RETENTION_DIS);
+
+	/* Wait for reg values to set */
+	for (i = 0; i < 1000U; i++) {
+		delay_1us();
+	}
+
+    Lpm_debugFullPrintf("start_PI_CTL_init\n");
+	/* Start Initialization [PI_START=1 and START=1] */
+	start_PI_CTL_init(&Emifhandle);
+
+    Lpm_debugFullPrintf("poll_for_init_completion\n");
+	poll_for_init_completion(&Emifhandle); /* Poll for init completion */
+    Lpm_debugFullPrintf("done\n");
+
+	return ret;
+}
+
+
+
+
 
 #define CSL_REG32_RD_OFF(p, off)    (CSL_REG32_RD_OFF_RAW( \
                                         (volatile uint32_t *) (p), \
@@ -803,6 +1212,7 @@ void Lpm_enterRetention(void)
 
 	dbg_line("Lpm_enterRetention: Done! Going to wait now");
 
+ddr_exit_low_power_mode();
 	Lpm_setupPmic();
 	while(1){};
 }
