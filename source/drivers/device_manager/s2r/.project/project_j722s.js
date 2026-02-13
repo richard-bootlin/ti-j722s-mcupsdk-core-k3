@@ -36,10 +36,10 @@ const cflags = {
 	    "-nostdlib",
 	    "-fomit-frame-pointer",
 	    "-fno-builtin",
+	    "-Wno-unused-variable",
 	    "-static",
     ],
     remove: [
-        "-Wno-unused-function",
         "-mthumb",
     ],
 };

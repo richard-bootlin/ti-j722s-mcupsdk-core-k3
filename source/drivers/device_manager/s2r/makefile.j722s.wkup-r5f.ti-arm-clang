@@ -47,9 +47,11 @@ CFLAGS_common := \
     -Werror \
     -g \
     -Wno-gnu-variable-sized-type-not-at-end \
+    -Wno-unused-function \
     -nostdlib \
     -fomit-frame-pointer \
     -fno-builtin \
+    -Wno-unused-variable \
     -static \
 
 CFLAGS_cpp_common := \
