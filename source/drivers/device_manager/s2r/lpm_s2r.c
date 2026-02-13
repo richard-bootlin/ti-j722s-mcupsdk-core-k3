@@ -415,7 +415,10 @@ static void Lpm_ddrEnterRetention(void)
 #define REGION_IDX 0x12
 #define CSL_EMIF_SSCFG_V2A_CTL_REG                                             (0x00000020U)
 
-struct emif_handle_s Emifhandle;
+static struct emif_handle_s Emifhandle = {
+	.ss_cfg_base_addr = (u64) (DDRSS0_SS_BASE),
+	.ctl_cfg_base_addr = (u64) (DDRSS0_CTRL_BASE)
+};
 
 static void configure_sdram_region_idx(struct emif_handle_s *h, u32 sdram_idx, u32 region_idx)
 {
