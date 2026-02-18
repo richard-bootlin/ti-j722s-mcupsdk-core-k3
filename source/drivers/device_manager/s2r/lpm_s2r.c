@@ -1156,7 +1156,7 @@ __maybe_unused static void Lpm_setupPmic(void)
 	 * you can configure both NSLEEP bits before the PMIC reacts to the change.
 	 */
 Lpm_dumpPmic();
-if (1) {
+if (0) {
 	/* Change FSM_NSLEEP_TRIGGERS: NSLEEP1=high, NSLEEP2=high */
 	Lpm_writePmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR, 0x03);
 	Lpm_debugReadPmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR);
@@ -1193,19 +1193,81 @@ if (1) {
 	Lpm_writePmic(SCICLIENT_LPM_SCRATCH_PAD_REG_3, SCICLIENT_LPM_MAGIC_SUSPEND);
 	Lpm_debugReadPmic(SCICLIENT_LPM_SCRATCH_PAD_REG_3);
 
-	/* unmask NSLEEP2 */
-	val = Lpm_readPmic(PMIC_CONFIG1_REGADDR);
-	val &= ~(PMIC_NSLEEP2_MASK);
-	Lpm_writePmic(PMIC_CONFIG1_REGADDR, val);
-	Lpm_debugReadPmic(PMIC_CONFIG1_REGADDR);
+#if 0
+Abhash Kumar 18/02/2026 06:37 • Could you try this PMIC sequence on j722s.
 
-	for (unsigned i = 0; i < 5000000U; i++) {
-		delay_1us();
-	}
-	val = Lpm_readPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
-	val &= ~BIT(7);
-	Lpm_writePmic(PMIC_FSM_I2C_TRIGGERS_REGADDR, val);
-	Lpm_debugReadPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
+(Set PMIC to ACTIVE state)
+i2c mw 48 86 3 1
+
+(read active interrupts in INT_TOP)
+i2c md 48 5a 1
+
+(mask GPIO1_FALL interrupt)
+i2c mw 48 4f 3f 1
+
+(clear remaining interrupts)
+i2c mw 48 66 01 1
+i2c mw 48 65 01 1
+
+(unmask NSLEEP2)
+i2c mw 48 7d 43 1
+
+(read FSM_I2C_TRIGGERS)
+i2c md 48 85 1
+
+(I2C_TRIGGERS_7 + I2C_TRIGGERS_5) -> io+ddr retained
+i2c mw 48 85 a0 1
+---------- OR -------------
+(Only I2C_TRIGGERS_5) -> only io retained
+i2c mw 48 85 20 1
+
+(Make NSLEEP2_BIT = 0) 
+i2c mw 48 86 1 1
+
+(create falling edge on PMIC_GPIO1)
+mw.w 0x43018080 0x00
+
+Then,
+After masking GPIO1_FALL interrupt add the following write
+
+(unmask GPIO1_RISE_MASK)
+i2c mw 48 50 3e
+
+Then rest of the sequence to enter to low power.
+
+Once in low power, raise GPIO1
+
+
+#endif
+	/* Set PMIC to ACTIVE state */
+	Lpm_writePmic(0x86, 0x03);
+	/* read active interrupts in INT_TOP */
+	Lpm_debugReadPmic(0x5a);
+	/* mask GPIO1_FALL interrupt */
+	Lpm_writePmic(0x4f, 0x3f);
+	/* unmask GPIO1_RISE_MASK */
+	Lpm_writePmic(0x50, 0x3e);
+	/* clear remaining interrupts */
+	Lpm_writePmic(0x66, 0x01);
+	Lpm_writePmic(0x65, 0x01);
+	/* unmask NSLEEP2 */
+	Lpm_writePmic(0x7d, 0x43);
+	/* read FSM_I2C_TRIGGERS */
+	Lpm_debugReadPmic(0x85);
+	/* I2C_TRIGGERS_7 + I2C_TRIGGERS_5 -> io+ddr retained */
+	Lpm_writePmic(0x85, 0xa0);
+	/*
+	 * Or:
+	 * Only I2C_TRIGGERS_5 -> only io retained
+	 * Lpm_writePmic(0x85, 0x20);
+	 */
+	/* Make NSLEEP2_BIT = 0) */
+	Lpm_writePmic(0x86, 0x01);
+
+	/* create falling edge on PMIC_GPIO1 */
+//	writel(0, 0x43018080);
+
+
 }
 
 }
