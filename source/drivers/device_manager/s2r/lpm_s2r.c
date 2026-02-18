@@ -54,13 +54,6 @@
 
 #define Lpm_debugFullPrintf Lpm_debugPrintf
 #define Lpm_debugReadPmic Lpm_readPmic
-// TODO: use a common include file for those:
-// was in source/drivers/device_manager/rm_pm_hal/rm_pm_hal_src/lpm/include/soc/am62px/baseaddress.h
-#define DDR_CTRL_BASE                   (0x0f308000U)
-#define MMR0_CFG_BASE                   (0x43000000U)
-#define WKUP_CTRL_MMR_BASE              MMR0_CFG_BASE
-#define MMR1_CFG_BASE                   (0x04500000U)
-#define MCU_CTRL_MMR_BASE               MMR1_CFG_BASE
 
 // was in source/drivers/device_manager/rm_pm_hal/rm_pm_hal_src/lpm/ddr.c
 #define CDNS_DENALI_PI_25                                       0x2064U
