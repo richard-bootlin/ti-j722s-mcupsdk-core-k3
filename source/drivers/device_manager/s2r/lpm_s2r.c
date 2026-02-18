@@ -386,13 +386,13 @@ static void Lpm_ddrEnterRetention(void)
 	enter_lpm_self_refresh();
 	put_ddrss_in_data_retention_thru_wkup_mmr(DDR16SS_RETENTION_EN);
 
+	writel(0, (WKUP_CTRL_MMR_BASE + WKUP0_EN));
 	/* Ensure that PMIC EN control from SOC is selected */
 	writel((WKUP0_PMCTRL_SYS_LPM_EN_PMIC | WKUP0_LPM_PMIC_OUT_EN), (WKUP_CTRL_MMR_BASE + PMCTRL_SYS));
 
 	/* Enter IO DDR mode */
 	writel((WKUP0_PMCTRL_SYS_LPM_EN_PMIC | WKUP0_LPM_PMIC_OUT_DIS), WKUP_CTRL_MMR_BASE + PMCTRL_SYS);
 	writel(WWD_STOP, WKUP_CTRL_MMR_BASE + WKUP_WWD0_CTRL);
-
 }
 
 #define DDRSS_PI_REGISTER_BLOCK__OFFS   0x2000U
