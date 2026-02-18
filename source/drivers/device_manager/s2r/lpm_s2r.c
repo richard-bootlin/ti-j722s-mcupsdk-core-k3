@@ -1284,7 +1284,7 @@ void Lpm_enterRetention(void)
 	dbg_line("Lpm_enterRetention: Enter retention");
 #define DO_RAM_PATTERN_TEST 0
 #define RAM_START 0x80000000U
-#define SZ 2048U
+#define SZ 2050U
 
 	if (DO_RAM_PATTERN_TEST) {
 		for (unsigned int i = 0; i < SZ; i++) {
@@ -1303,8 +1303,8 @@ void Lpm_enterRetention(void)
 		delay_1us();
 	}
 
-ddr_exit_low_power_mode();
-//	Lpm_setupPmic();
+//ddr_exit_low_power_mode();
+	Lpm_setupPmic();
 
 	if (DO_RAM_PATTERN_TEST) {
 		dump_HEX((void*)RAM_START, SZ*4);
