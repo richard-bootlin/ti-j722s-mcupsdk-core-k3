@@ -198,6 +198,7 @@ static int32_t fsp_shift(void)
 		--timeout;
 	}
 	if (timeout == 0U) {
+		Lpm_debugFullPrintf("Failed freq change request\n");
 		ret = -1;
 	}
 
@@ -206,6 +207,7 @@ static int32_t fsp_shift(void)
 	if (val == DDR4_FSP_CLKCHNG_REQ_TYPE_FSP0) {
 		pll_bypass(&main_pll12, 1);
 	} else {
+		Lpm_debugFullPrintf("Failed setting PLL frequency to the requested frequency\n");
 		ret = -1;
 	}
 
@@ -219,6 +221,7 @@ static int32_t fsp_shift(void)
 		--timeout;
 	}
 	if (timeout == 0U) {
+		Lpm_debugFullPrintf("Timeout waiting for request to go away\n");
 		ret = -1;
 	}
 
@@ -234,6 +237,7 @@ static int32_t fsp_shift(void)
 		--timeout;
 	}
 	if (timeout == 0U) {
+		Lpm_debugFullPrintf("Timeout waiting for CHNG_DDR4_FSP_ACK bit to be 1\n");
 		ret = -1;
 	}
 
