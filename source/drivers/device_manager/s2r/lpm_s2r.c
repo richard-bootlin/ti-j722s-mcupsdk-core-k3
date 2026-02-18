@@ -1156,6 +1156,7 @@ __maybe_unused static void Lpm_setupPmic(void)
 	 * you can configure both NSLEEP bits before the PMIC reacts to the change.
 	 */
 Lpm_dumpPmic();
+if (1) {
 	/* Change FSM_NSLEEP_TRIGGERS: NSLEEP1=high, NSLEEP2=high */
 	Lpm_writePmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR, 0x03);
 	Lpm_debugReadPmic(PMIC_FSM_NSLEEP_TRIGGERS_REGADDR);
@@ -1183,10 +1184,29 @@ Lpm_dumpPmic();
 	 * and also wake up right away
 	 */
 	val = Lpm_readPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
-	// val |= 0x1; // pmic doesn't wakeup
-	val = 0x1; // pmic cuts power and restart right away
+ val |= 0x1; // pmic doesn't wakeup
+//	val = 0x1; // pmic cuts power and restart right away
 	Lpm_writePmic(PMIC_FSM_I2C_TRIGGERS_REGADDR, val);
 	Lpm_debugReadPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
+} else {
+	/* Write magic number to scratch register to indicate the suspend */
+	Lpm_writePmic(SCICLIENT_LPM_SCRATCH_PAD_REG_3, SCICLIENT_LPM_MAGIC_SUSPEND);
+	Lpm_debugReadPmic(SCICLIENT_LPM_SCRATCH_PAD_REG_3);
+
+	/* unmask NSLEEP2 */
+	val = Lpm_readPmic(PMIC_CONFIG1_REGADDR);
+	val &= ~(PMIC_NSLEEP2_MASK);
+	Lpm_writePmic(PMIC_CONFIG1_REGADDR, val);
+	Lpm_debugReadPmic(PMIC_CONFIG1_REGADDR);
+
+	for (unsigned i = 0; i < 5000000U; i++) {
+		delay_1us();
+	}
+	val = Lpm_readPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
+	val &= ~BIT(7);
+	Lpm_writePmic(PMIC_FSM_I2C_TRIGGERS_REGADDR, val);
+	Lpm_debugReadPmic(PMIC_FSM_I2C_TRIGGERS_REGADDR);
+}
 
 }
 
