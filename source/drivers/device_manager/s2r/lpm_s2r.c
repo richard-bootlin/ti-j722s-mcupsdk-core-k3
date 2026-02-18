@@ -452,8 +452,8 @@ static void poll_for_init_completion(struct emif_handle_s *h)
 	while (((SOC_read32(h->ctl_cfg_base_addr + (u64) DDRSS_PI_REGISTER_BLOCK__OFFS + (u64) DENALI_PI_87__SFR_OFFS)) & 0x1U) != 0x1U) {      /* Poll for PI Init completion */
 	}
     Lpm_debugFullPrintf("wait for ctl init\n");
-	while (((SOC_read32(h->ctl_cfg_base_addr + (u64) DENALI_CTL_350__SFR_OFFS)) & 0x02000000U) != 0x02000000U) {                            /* Poll for CTL Init completion */
-	}
+    // TODO: we are stuck in there:
+//	while (((SOC_read32(h->ctl_cfg_base_addr + (u64) DENALI_CTL_350__SFR_OFFS)) & 0x02000000U) != 0x02000000U) {;}                            /* Poll for CTL Init completion */
 #endif
 }
 
