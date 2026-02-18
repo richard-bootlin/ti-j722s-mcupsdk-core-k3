@@ -1220,7 +1220,12 @@ if (1) {
 void Lpm_enterRetention(void)
 {
 	dbg_line("Lpm_enterRetention: Enter retention");
+#define RAM_START 0x80000000U
+#define SZ 2048U
 
+for (unsigned int i = 0; i < SZ; i++) {
+	writel(i, RAM_START + 4 * i);
+}
 	/* Make sure that nothing remains in cache before going to retention */
 	Lpm_cleanAllDCache();
 
@@ -1229,8 +1234,14 @@ void Lpm_enterRetention(void)
 
 	dbg_line("Lpm_enterRetention: Done! Going to wait now");
 
+	for (unsigned int i = 0; i < 3000000U; i++) {
+		delay_1us();
+	}
+
 ddr_exit_low_power_mode();
-	Lpm_setupPmic();
+//	Lpm_setupPmic();
+
+dump_HEX((void*)RAM_START, SZ*4);
 	while(1){};
 }
 
