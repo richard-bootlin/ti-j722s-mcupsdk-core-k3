@@ -89,22 +89,19 @@ struct pll_raw_data {
 };
 
 
-// TODO
 static void Lpm_cleanAllDCache(void)
 {
-#if 0
 
 	unsigned int set, way;
 
 	for(way = 0; way < 4 ; way ++)
-		for(set = 0; set < 0x200; set++) {
+		for(set = 0; set < 0x100; set++) {
 			unsigned int val = set << 4 | way << 30;
 			asm("    dmb");
 			__asm__ __volatile__ ("mcr p15, 0, %0, c7, c10, 2\t\n": "=r"(val));
 			__asm__ __volatile__ ("mcr p15, 0, %0, c7, c6, 2\t\n": "=r"(val));
 			asm("    dsb");
 		}
-#endif
 }
 
 #define CTRL_MMR0_PARTITION_SIZE                (0x4000U)
