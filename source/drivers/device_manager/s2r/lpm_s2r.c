@@ -1298,9 +1298,10 @@ Once in low power, raise GPIO1
 void Lpm_enterRetention(void)
 {
 	dbg_line("Lpm_enterRetention: Enter retention");
-#define DO_RAM_PATTERN_TEST 0
+#define DO_DM_SUSPEND_RESUME 0
+#define DO_RAM_PATTERN_TEST 1
 #define RAM_START 0x80000000U
-#define SZ 2050U
+#define SZ 2500U
 
 	if (DO_RAM_PATTERN_TEST) {
 		for (unsigned int i = 0; i < SZ; i++) {
@@ -1310,6 +1311,9 @@ void Lpm_enterRetention(void)
 	/* Make sure that nothing remains in cache before going to retention */
 	Lpm_cleanAllDCache();
 
+	if (DO_RAM_PATTERN_TEST) {
+		dump_HEX((void*)RAM_START, 2048);
+	}
 	Lpm_ddrEnterRetention();
 	dbg_line("Lpm_enterRetention: DDR retention done");
 
@@ -1319,12 +1323,32 @@ void Lpm_enterRetention(void)
 		delay_1us();
 	}
 
-//ddr_exit_low_power_mode();
-	Lpm_setupPmic();
+#if DO_DM_SUSPEND_RESUME
+ddr_exit_low_power_mode();
 
+	Lpm_cleanAllDCache();
 	if (DO_RAM_PATTERN_TEST) {
-		dump_HEX((void*)RAM_START, SZ*4);
+		dump_HEX((void*)RAM_START, 2048);
 	}
+	Lpm_cleanAllDCache();
+	int error=0;
+	for (unsigned int i = 0; i < SZ; i++) {
+		uint32_t val = readl(RAM_START + 4 * i);
+		if (val != i) {
+			error++;
+			if (error == 50) {
+				Lpm_debugFullPrintf("too many errors\n");
+			}
+			if (error < 50) {
+				Lpm_debugFullPrintf("0x%x != 0x%x\n", i, val);
+			}
+		}
+	}
+	Lpm_cleanAllDCache();
+	Lpm_debugFullPrintf("end check 0x%x error(s)\n", error);
+#else
+	Lpm_setupPmic();
+#endif
 	while(1){};
 }
 
