@@ -441,6 +441,7 @@ static void start_PI_CTL_init(struct emif_handle_s *h)
 
 static void poll_for_init_completion(struct emif_handle_s *h)
 {
+    int i = 10000;
 #if defined(CTL_INIT_ONLY)
 	while (((SOC_read32(h->ctl_cfg_base_addr + DENALI_CTL_350__SFR_OFFS)) & 0x02000000) != 0x02000000) { /* Poll for CTL Init completion */
 	}
@@ -448,12 +449,27 @@ static void poll_for_init_completion(struct emif_handle_s *h)
 	while (((SOC_read32(h->ctl_cfg_base_addr + DDRSS_PI_REGISTER_BLOCK__OFFS + DENALI_PI_87__SFR_OFFS)) & 0x1) != 0x1) { /* Poll for PI Init completion */
 	}
 #else
-    Lpm_debugFullPrintf("wait for PI init\n");
-	while (((SOC_read32(h->ctl_cfg_base_addr + (u64) DDRSS_PI_REGISTER_BLOCK__OFFS + (u64) DENALI_PI_87__SFR_OFFS)) & 0x1U) != 0x1U) {      /* Poll for PI Init completion */
+	Lpm_debugFullPrintf("wait for PI init\n");
+	i = 10000;
+	/* Poll for PI Init completion */
+	while (((SOC_read32(h->ctl_cfg_base_addr + (u64) DDRSS_PI_REGISTER_BLOCK__OFFS + (u64) DENALI_PI_87__SFR_OFFS)) & 0x1U) != 0x1U) {
+		if (i-- < 0) {
+			Lpm_debugFullPrintf("TIMEOUT on Poll for PI Init completion\n");
+
+			break;
+		}
 	}
-    Lpm_debugFullPrintf("wait for ctl init\n");
-    // TODO: we are stuck in there:
-//	while (((SOC_read32(h->ctl_cfg_base_addr + (u64) DENALI_CTL_350__SFR_OFFS)) & 0x02000000U) != 0x02000000U) {;}                            /* Poll for CTL Init completion */
+	Lpm_debugFullPrintf("wait for ctl init\n");
+	// TODO: we are stuck in there:
+	i = 10000;
+	/* Poll for CTL Init completion */
+	while (((SOC_read32(h->ctl_cfg_base_addr + (u64) DENALI_CTL_350__SFR_OFFS)) & 0x02000000U) != 0x02000000U) {
+		if (i-- < 0) {
+			Lpm_debugFullPrintf("TIMEOUT on Poll for CTL Init completion\n");
+
+			break;
+		}
+	}
 #endif
 }
 
