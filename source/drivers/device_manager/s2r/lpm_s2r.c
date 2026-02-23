@@ -266,17 +266,16 @@ void ctrlmmr_unlock(uint32_t base, uint8_t partition)
  * \param width width of the field
  * \param leftshift the number of bit fields the value has to be left shifted
  */
-static void Write_MMR_Field(uint32_t mmr_address, uint32_t field_value,
-			    uint32_t width, uint32_t leftshift)
+void Write_MMR_Field(uint32_t mmr_address, uint32_t field_value,
+		     uint32_t width, uint32_t leftshift)
 {
-	uint32_t *p_mmr;
-	uint32_t mask;
-
-	p_mmr = (uint32_t *) mmr_address;                                       /* Grab the MMR value */
-	mask = (((uint32_t) 1U << width) - ((uint32_t) 1U << leftshift));       /* Build a mask of 1s for the field. */
-	mask = ~(mask);                                                         /* Invert the mask so that the field will be zero'd out with the AND operation. */
-	*p_mmr &= mask;                                                         /* Zero out the field in the register. */
-	*p_mmr |= (field_value << leftshift);                                   /* Assign the value to that specific field. */
+    uint32_t * p_mmr;
+    uint32_t mask;
+    p_mmr = (uint32_t *) mmr_address;   //Grab the MMR value
+    mask = ((1 << width) - 1) << leftshift; //Build a mask of 1s for the field.
+    mask = ~(mask); //Invert the mask so that the field will be zero'd out with the AND operation.
+    *p_mmr &= mask; //Zero out the field in the register.
+    *p_mmr |= (field_value << leftshift); //Assign the value to that specific field.
 }
 
 static void put_ddrss_in_data_retention_thru_wkup_mmr(uint32_t enable)
