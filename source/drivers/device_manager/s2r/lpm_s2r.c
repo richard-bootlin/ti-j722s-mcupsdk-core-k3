@@ -43,6 +43,12 @@
 #include <baseaddress.h>
 #include <cslr_i2c.h>
 #include <cslr_mcu_padcfg_ctrl_mmr.h>
+#include <cslr_main_ctrl_mmr.h>
+#include <cslr_mcu_ctrl_mmr.h>
+#include <cslr_wkup_ctrl_mmr.h>
+#include <cslr_main_pll_mmr.h>
+#include <cslr_mcu_pll_mmr.h>
+#include <cslr_main_padcfg_ctrl_mmr.h>
 #include <ddr_functions.h>
 #include <DDRSS_addr_map_sfr_offs_ew_32bit.h>
 #include <lib/bitops.h>
@@ -52,6 +58,11 @@
 #include <wkup_ctrl_mmr.h>
 #include "dbg_uart.c"
 
+#define SAVV_CORE_DATA_BARRIER  __asm volatile("   dsb          ;");
+#define SAVV_CORE_INSTR_BARRIER __asm volatile("   isb          ;");
+#define SAVV_CORE_WFI           __asm volatile(" wfi;");
+
+#define printf Lpm_debugPrintf
 #define Lpm_debugFullPrintf Lpm_debugPrintf
 #define Lpm_debugReadPmic Lpm_readPmic
 
@@ -1287,6 +1298,381 @@ Once in low power, raise GPIO1
 
 }
 
+
+#define DDRSS_CTL_BASE DDR_CTRL_BASE
+#ifndef AVV_PASS
+#define AVV_PASS		(0)
+#endif
+
+#ifndef AVV_FAIL
+#define AVV_FAIL		(1)
+#endif
+#define SOC_AM62PX
+#ifdef SOC_AM62PX //AM62P
+    #ifndef __SOC_DEFINED
+        #define __SOC_DEFINED
+    #else
+        #define __SOC_MULTIPLE_DEFINES
+    #endif
+#endif
+#ifdef __SOC_MULTIPLE_DEFINES
+#error multiple socs defined
+#endif
+
+/* define the unlock and lock values */
+#define KICK0_UNLOCK_VAL 0x68EF3490
+#define KICK1_UNLOCK_VAL 0xD172BC5A
+#define KICK_LOCK_VAL    0x00000000
+
+#define _SAVV_MMR_HAS_MAIN_CTRL_MMR
+#define _SAVV_MMR_HAS_MCU_CTRL_MMR
+#define _SAVV_MMR_HAS_WKUP_CTRL_MMR
+#define _SAVV_MMR_HAS_MAIN_PLL_MMR
+#define _SAVV_MMR_HAS_MCU_PLL_MMR
+#define _SAVV_MMR_HAS_MAIN_PADCONFIG_MMR
+#define _SAVV_MMR_HAS_MCU_PADCONFIG_MMR
+
+#define MAIN_CTRL_MMR_BASE_ADDRESS          CSL_CTRL_MMR0_CFG0_BASE
+#define MCU_CTRL_MMR_BASE_ADDRESS           CSL_MCU_CTRL_MMR0_CFG0_BASE
+#define WKUP_CTRL_MMR_BASE_ADDRESS          CSL_WKUP_CTRL_MMR0_CFG0_BASE
+
+#define MAIN_PLL_MMR_BASE_ADDRESS	        CSL_PLL0_CFG_BASE
+#define MCU_PLL_MMR_BASE_ADDRESS            CSL_WKUP_PLL0_CFG_BASE
+
+#define MAIN_PADCONFIG_MMR_BASE_ADDRESS     CSL_PADCFG_CTRL0_CFG0_BASE
+#define MCU_PADCONFIG_MMR_BASE_ADDRESS      CSL_MCU_PADCFG_CTRL0_CFG0_BASE
+
+#define MAIN_SEC_MMR_BASE_ADDRESS           CSL_MAIN_SEC_MMR0_CFG0_BASE
+#define MCU_SEC_MMR_BASE_ADDRESS            CSL_MCU_MCU_SEC_MMR0_CFG0_BASE
+#define WKUP_SEC_MMR_BASE_ADDRESS           CSL_WKUP_WKUP_SEC_MMR0_CFG0_BASE
+
+static const uint32_t main_ctrl_mmr_kick_offsets[]= {  CSL_MAIN_CTRL_MMR_CFG0_LOCK0_KICK0,
+                                                CSL_MAIN_CTRL_MMR_CFG0_LOCK1_KICK0,
+                                                CSL_MAIN_CTRL_MMR_CFG0_LOCK2_KICK0,
+                                                //CSL_MAIN_CTRL_MMR_CFG0_LOCK3_KICK0,
+                                                CSL_MAIN_CTRL_MMR_CFG0_LOCK4_KICK0,
+                                                //CSL_MAIN_CTRL_MMR_CFG0_LOCK5_KICK0,
+                                                CSL_MAIN_CTRL_MMR_CFG0_LOCK6_KICK0,
+                                                //CSL_MAIN_CTRL_MMR_CFG0_LOCK7_KICK0,
+                                             };
+static const uint32_t main_ctrl_mmr_kick_num = sizeof(main_ctrl_mmr_kick_offsets)/sizeof(uint32_t);
+
+static const uint32_t mcu_ctrl_mmr_kick_offsets[]= {   CSL_MCU_CTRL_MMR_CFG0_LOCK0_KICK0,
+                                                CSL_MCU_CTRL_MMR_CFG0_LOCK1_KICK0,
+                                                CSL_MCU_CTRL_MMR_CFG0_LOCK2_KICK0,
+                                                CSL_MCU_CTRL_MMR_CFG0_LOCK3_KICK0,
+                                                CSL_MCU_CTRL_MMR_CFG0_LOCK4_KICK0,
+                                                //CSL_MCU_CTRL_MMR_CFG0_LOCK5_KICK0,
+                                                CSL_MCU_CTRL_MMR_CFG0_LOCK6_KICK0,
+                                                //CSL_MCU_CTRL_MMR_CFG0_LOCK7_KICK0,
+                                             };
+static const uint32_t mcu_ctrl_mmr_kick_num = sizeof(mcu_ctrl_mmr_kick_offsets)/sizeof(uint32_t);
+
+static const uint32_t wkup_ctrl_mmr_kick_offsets[]= {   CSL_WKUP_CTRL_MMR_CFG0_LOCK0_KICK0,
+                                                        CSL_WKUP_CTRL_MMR_CFG0_LOCK1_KICK0,
+                                                        CSL_WKUP_CTRL_MMR_CFG0_LOCK2_KICK0,
+                                                        CSL_WKUP_CTRL_MMR_CFG0_LOCK3_KICK0,
+                                                        CSL_WKUP_CTRL_MMR_CFG0_LOCK4_KICK0,
+                                                        CSL_WKUP_CTRL_MMR_CFG0_LOCK5_KICK0,
+                                                        CSL_WKUP_CTRL_MMR_CFG0_LOCK6_KICK0,
+                                                        CSL_WKUP_CTRL_MMR_CFG0_LOCK7_KICK0,
+                                                    };
+static const uint32_t wkup_ctrl_mmr_kick_num = sizeof(wkup_ctrl_mmr_kick_offsets)/sizeof(uint32_t);
+
+static const uint32_t main_pll_mmr_kick_offsets[]= {  CSL_MAIN_PLL_MMR_CFG_PLL0_LOCKKEY0,
+                                               CSL_MAIN_PLL_MMR_CFG_PLL1_LOCKKEY0,
+                                               CSL_MAIN_PLL_MMR_CFG_PLL2_LOCKKEY0,
+                                               //CSL_MAIN_PLL_MMR_CFG_PLL3_LOCKKEY0,
+                                               //CSL_MAIN_PLL_MMR_CFG_PLL4_LOCKKEY0,
+                                               CSL_MAIN_PLL_MMR_CFG_PLL5_LOCKKEY0,
+                                               //CSL_MAIN_PLL_MMR_CFG_PLL6_LOCKKEY0,
+                                               CSL_MAIN_PLL_MMR_CFG_PLL7_LOCKKEY0,
+                                               CSL_MAIN_PLL_MMR_CFG_PLL8_LOCKKEY0,
+                                               //CSL_MAIN_PLL_MMR_CFG_PLL9_LOCKKEY0,
+                                               //CSL_MAIN_PLL_MMR_CFG_PLL10_LOCKKEY0,
+                                               //CSL_MAIN_PLL_MMR_CFG_PLL11_LOCKKEY0,
+                                               CSL_MAIN_PLL_MMR_CFG_PLL12_LOCKKEY0,
+                                               CSL_MAIN_PLL_MMR_CFG_PLL15_LOCKKEY0,
+                                               CSL_MAIN_PLL_MMR_CFG_PLL17_LOCKKEY0,
+                                             };
+static const uint32_t main_pll_mmr_kick_num = sizeof(main_pll_mmr_kick_offsets)/sizeof(uint32_t);
+
+static const uint32_t mcu_pll_mmr_kick_offsets[]= {  CSL_MCU_PLL_MMR_CFG_PLL0_LOCKKEY0,
+                                              //CSL_MCU_PLL_MMR_CFG_PLL1_LOCKKEY0,
+                                              //CSL_MCU_PLL_MMR_CFG_PLL2_LOCKKEY0,
+                                              //CSL_MCU_PLL_MMR_CFG_PLL3_LOCKKEY0,
+                                              //CSL_MCU_PLL_MMR_CFG_PLL4_LOCKKEY0,
+                                              //CSL_MCU_PLL_MMR_CFG_PLL5_LOCKKEY0,
+                                              //CSL_MCU_PLL_MMR_CFG_PLL6_LOCKKEY0,
+                                              //CSL_MCU_PLL_MMR_CFG_PLL7_LOCKKEY0,
+                                              //CSL_MCU_PLL_MMR_CFG_PLL8_LOCKKEY0,
+                                              //CSL_MCU_PLL_MMR_CFG_PLL9_LOCKKEY0,
+                                              //CSL_MCU_PLL_MMR_CFG_PLL10_LOCKKEY0,
+                                              //CSL_MCU_PLL_MMR_CFG_PLL11_LOCKKEY0,
+                                              //CSL_MCU_PLL_MMR_CFG_PLL12_LOCKKEY0,
+                                            };
+static const uint32_t mcu_pll_mmr_kick_num = sizeof(mcu_pll_mmr_kick_offsets)/sizeof(uint32_t);
+
+static const uint32_t main_padcfg_mmr_kick_offsets[]= {  CSL_MAIN_PADCFG_CTRL_MMR_CFG0_LOCK0_KICK0,
+                                                         CSL_MAIN_PADCFG_CTRL_MMR_CFG0_LOCK1_KICK0,
+                                               };
+static const uint32_t main_padcfg_mmr_kick_num = sizeof(main_padcfg_mmr_kick_offsets)/sizeof(uint32_t);
+
+static const uint32_t mcu_padcfg_mmr_kick_offsets[]= {   CSL_MCU_PADCFG_CTRL_MMR_CFG0_LOCK0_KICK0,
+                                                         CSL_MCU_PADCFG_CTRL_MMR_CFG0_LOCK1_KICK0,
+                                              };
+static const uint32_t mcu_padcfg_mmr_kick_num = sizeof(mcu_padcfg_mmr_kick_offsets)/sizeof(uint32_t);
+
+typedef enum {
+    MMR_UNLOCK=1,
+    MMR_LOCK=0
+} mmr_lock_actions_t;
+uint32_t MMR_change_lock(mmr_lock_actions_t target_state, uint32_t * kick0) {
+	uint32_t * kick1 = kick0 + 1;
+	uint32_t lock_state = (*kick0 & 0x1); //status is 1 if unlocked, 0 if locked
+
+	//If lock state is not what we want, change it
+	if (lock_state != (uint32_t) target_state ) {
+		switch(target_state) {
+		case MMR_LOCK:
+			// lock the partition by writing the lock values to the kick lock registers
+			*kick0 = KICK_LOCK_VAL;
+			*kick1 = KICK_LOCK_VAL;
+			break;
+		case MMR_UNLOCK:
+			// unlock the partition by writing the unlock values to the kick lock registers
+			*kick0 = KICK0_UNLOCK_VAL;
+			*kick1 = KICK1_UNLOCK_VAL;
+			break;
+		}
+
+		lock_state = (*kick0 & 0x1);
+		SAVV_CORE_DATA_BARRIER;
+		//Error out if the change did not take effect
+		if(lock_state!= (uint32_t) target_state ){
+			//Could insert debug statement here
+			//printf("SAVV_DEBUG: Error in changing MMR lock state at address %llx", kick0 );
+			return AVV_FAIL;
+		}
+	}
+	//Return pass if lock is already what we want or if changing lock succeeds
+	return AVV_PASS;
+}
+uint32_t generic_mmr_change_all_locks(mmr_lock_actions_t target_state, uint32_t base_addr, const uint32_t * offset_array, uint32_t array_size) {
+	uint32_t errors=0;
+	uint32_t i=0;
+	uint32_t * kick0_ptr;
+	for(i=0;i<array_size;i++) {
+		kick0_ptr = (uint32_t *) (base_addr + offset_array[i]);
+		if(MMR_change_lock(target_state, kick0_ptr) == AVV_FAIL){
+			errors++;
+		}
+	}
+	return errors;
+}
+
+uint32_t WKUP_CTRL_MMR_change_all_locks(mmr_lock_actions_t target_state) {
+	uint32_t errors=generic_mmr_change_all_locks(target_state, (uint32_t) WKUP_CTRL_MMR_BASE_ADDRESS, wkup_ctrl_mmr_kick_offsets, wkup_ctrl_mmr_kick_num);
+	if(errors==0) { return AVV_PASS; }
+	else          { return AVV_FAIL; }
+}
+
+uint32_t WKUP_CTRL_MMR_unlock_all() {
+	return WKUP_CTRL_MMR_change_all_locks(MMR_UNLOCK);
+}
+uint32_t WKUP_CTRL_MMR_lock_all() {
+	return WKUP_CTRL_MMR_change_all_locks(MMR_LOCK);
+}
+uint32_t MCU_PADCONFIG_MMR_change_all_locks(mmr_lock_actions_t target_state) {
+	uint32_t errors=generic_mmr_change_all_locks(target_state, (uint32_t) MCU_PADCONFIG_MMR_BASE_ADDRESS, mcu_padcfg_mmr_kick_offsets, mcu_padcfg_mmr_kick_num);
+	if(errors==0) { return AVV_PASS; }
+	else          { return AVV_FAIL; }
+}
+
+uint32_t MCU_PADCONFIG_MMR_unlock_all() {
+	return MCU_PADCONFIG_MMR_change_all_locks(MMR_UNLOCK);
+}
+uint32_t MCU_PADCONFIG_MMR_lock_all() {
+	return MCU_PADCONFIG_MMR_change_all_locks(MMR_LOCK);
+}
+#define DDR4 1
+#define LPDDR4 2
+//Enables DDR SR and data retention
+uint32_t ddrLPM_Entry (uint32_t memType)
+{
+    volatile uint32_t *mmrPtr;
+    uint32_t lp_status = 0;
+
+    //Configure PHY for LPI Wakeup
+    //DDR4 - write lpi_sr_long_mcclk_gate_wakeup registers
+    if(memType == DDR4){
+
+        mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + CSL_EMIF_CTLCFG_DENALI_CTL_161);
+        *mmrPtr = *mmrPtr & 0xFFFF0000;
+        *mmrPtr = *mmrPtr | (0x0101 << 0);
+
+        mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + CSL_EMIF_CTLCFG_DENALI_CTL_163);
+        *mmrPtr = *mmrPtr & 0xFF0000FF;
+        *mmrPtr = *mmrPtr | (0x0101 << 8);
+
+        mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + CSL_EMIF_CTLCFG_DENALI_CTL_165);
+        *mmrPtr = *mmrPtr & 0x0000FFFF;
+        *mmrPtr = *mmrPtr | (0x0101 << 16);
+    }
+    //LPDD4 - write lpi_srpd_long_mcclk_gate_wakeup registers
+    else{
+
+        mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + CSL_EMIF_CTLCFG_DENALI_CTL_162);
+        *mmrPtr = *mmrPtr & 0xFFFF0000;
+        *mmrPtr = *mmrPtr | (0x0101 << 0);
+
+        mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + CSL_EMIF_CTLCFG_DENALI_CTL_164);
+        *mmrPtr = *mmrPtr & 0xFF0000FF;
+        *mmrPtr = *mmrPtr | (0x0101 << 8);
+
+        mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + CSL_EMIF_CTLCFG_DENALI_CTL_166);
+        *mmrPtr = *mmrPtr & 0x0000FFFF;
+        *mmrPtr = *mmrPtr | (0x0101 << 16);
+    }
+
+    //configure phy_lp_wakeup
+    mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + CSL_EMIF_CTLCFG_DENALI_PHY_1835);
+    *mmrPtr = *mmrPtr & 0xFFFFFF00;
+    *mmrPtr = *mmrPtr | 0x7;
+
+    //configure lpi_wakeup enable
+    mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + CSL_EMIF_CTLCFG_DENALI_CTL_167);
+    *mmrPtr = *mmrPtr & 0xFFFF00FF;
+    *mmrPtr = *mmrPtr | (0xF << 8);
+
+
+    //Enter SR long with Mem clock gating
+    //Program self refresh mode
+    mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + CSL_EMIF_CTLCFG_DENALI_CTL_160);
+    *mmrPtr = (0x51<< 8); //LP_MODE_LONG_SELF_REFRESH
+
+    //poll self refresh mode change
+    mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + CSL_EMIF_CTLCFG_DENALI_CTL_345);
+    while(lp_status != 0x10000)
+        lp_status = *mmrPtr & 0x10000;
+#define CSL_WKUP_CTRL_MMR_CFG0_DDR16SS_PMCTRL                            (0x000080D0U)
+
+    //enable ddr date retention
+    Write_MMR_Field (WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_DDR16SS_PMCTRL, 0x6, 4, 0);
+
+    return 0;
+}
+
+uint32_t disableLPM_PMIC_EN(void)
+{
+//    WKUP_CTRL_MMR_unlock_all();
+
+    //Set pmic_en=0 and lpm_en=0 (note write enable bit fields are set)
+    Write_MMR_Field(WKUP_CTRL_MMR_BASE_ADDRESS +CSL_WKUP_CTRL_MMR_CFG0_PMCTRL_SYS, 0x0, 32, 0);
+    return 0;
+}
+
+
+uint32_t ioIsolationEnable()
+{
+//    WKUP_CTRL_MMR_unlock_all();
+
+    //Set io_iso_ctrl_0
+    uint32_t * pmctrl_IO0 = (uint32_t *)(WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_PMCTRL_IO_0);
+    *pmctrl_IO0 = *pmctrl_IO0 | (1<<24);
+
+    //Set io_iso_ctrl_1
+    uint32_t * pmctrl_IO1 = (uint32_t *)(WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_PMCTRL_IO_1);
+    *pmctrl_IO1 = *pmctrl_IO1 | (1<<24);
+
+    return 0;
+}
+
+#define WKUP_SOURCES 0x40000   //CANUART IO Daisy Chain
+
+#define CANIO_MW       0xAAAAAAAA  //CANIO Magic Word (Note: 0xAAAAAAAA will be left shifted 1 when written)
+#define CANIO_NOT_MW   0x12345678
+
+#define CANIO_WAKE_RESUME_KEY0_VAL 0x0000FFFF
+#define CANIO_WAKE_RESUME_KEY1_VAL 0x1111FFFF
+#define CANIO_WAKE_RESUME_KEY2_VAL 0x2222FFFF
+#define CANIO_WAKE_RESUME_KEY3_VAL 0x3333FFFF
+#define CANIO_WAKE_OFF_MODE_MW_VAL 0x12555555
+uint32_t configureCANIO_Wakeup()
+{
+    int i=0;
+
+//    WKUP_CTRL_MMR_unlock_all();
+//    MCU_PADCONFIG_MMR_unlock_all();
+
+    //Set global_wuen0
+    uint32_t * pmctrl_IO0 = (uint32_t *)(WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_PMCTRL_IO_0);
+    *pmctrl_IO0 = *pmctrl_IO0 | (1<<16);
+
+    //Enables Wakeup from CANUART IO Daisy Chain
+    Write_MMR_Field(WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_WKUP0_EN, WKUP_SOURCES, 32, 0);
+
+    //Set (CANUART PADs) PADCFG5-16 registers  - wkup enabled, input mode enabled, GPIO mode
+    for (i=5; i<=16; i++)
+    {
+        //MCU_PADCGF10(WKUP_UART0_TX) not configured as wakeup src.EVM has pullup on WKUP_UART0_TX that will create a wakeup event and causes PMIC_LPM_EN stay high
+        if (i!=13) //if ((i==10) || (i == 9) || (i==5) || (i==6))
+            continue;
+
+        Write_MMR_Field(MCU_PADCONFIG_MMR_BASE_ADDRESS + (0x4000+(4*i)), 1, 1, 29);     //wkup_en=1
+        Write_MMR_Field(MCU_PADCONFIG_MMR_BASE_ADDRESS + (0x4000+(4*i)), 1, 1, 18);     //RX enabled = 1
+        Write_MMR_Field(MCU_PADCONFIG_MMR_BASE_ADDRESS + (0x4000+(4*i)), 0, 1, 17);     //pulldown selected
+        Write_MMR_Field(MCU_PADCONFIG_MMR_BASE_ADDRESS + (0x4000+(4*i)), 0, 1, 16);     //pull up/down enabled
+        Write_MMR_Field(MCU_PADCONFIG_MMR_BASE_ADDRESS + (0x4000+(4*i)), 7, 3, 0);      //MUX mode=7 GPIO mode
+        Write_MMR_Field(MCU_PADCONFIG_MMR_BASE_ADDRESS + (0x4000+(4*i)), 1, 1, 7);      //wk_lvl_en = 1
+        Write_MMR_Field(MCU_PADCONFIG_MMR_BASE_ADDRESS + (0x4000+(4*i)), 1, 1, 8);      //wk_pol = 1
+    }
+
+    return 0;
+}
+
+uint32_t enterCANIORetention()
+{
+//    WKUP_CTRL_MMR_unlock_all();
+
+    //Set CANIO Resume Keys
+    Write_MMR_Field(WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_CANUART_WAKE_RESUME_KEY(0), CANIO_WAKE_RESUME_KEY0_VAL, 32, 0);
+    Write_MMR_Field(WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_CANUART_WAKE_RESUME_KEY(1), CANIO_WAKE_RESUME_KEY1_VAL, 32, 0);
+    Write_MMR_Field(WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_CANUART_WAKE_RESUME_KEY(2), CANIO_WAKE_RESUME_KEY2_VAL, 32, 0);
+    Write_MMR_Field(WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_CANUART_WAKE_RESUME_KEY(3), CANIO_WAKE_RESUME_KEY3_VAL, 32, 0);
+    Write_MMR_Field(WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_CANUART_WAKE_OFF_MODE, CANIO_WAKE_OFF_MODE_MW_VAL, 32, 0);
+
+    //add delay
+    for (int i=0; i<=100; i++);
+
+    //Set CAN IO magic word
+    Write_MMR_Field(WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_CANUART_WAKE_CTRL, CANIO_MW, 31, 1);
+
+    //Loads and locks the MW field for CAN IO isolation.
+    Write_MMR_Field(WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_CANUART_WAKE_CTRL, 0x1, 1, 0);
+
+    //add delay
+    for (int i=0; i<=100; i++);
+
+    //write non-magic word and set lock bit=1
+    Write_MMR_Field(WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_CANUART_WAKE_CTRL, (CANIO_NOT_MW | 0x1) , 32, 0);
+
+    return 0;
+}
+//
+//generate LD to latch data retention
+uint32_t generateLD_DataRet(){
+
+    //Set data_ret_ld = 1 to generate a LD signal to latch the retention signal
+    Write_MMR_Field (WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_DDR16SS_PMCTRL, 1, 1, 31);
+
+    //Set data_ret_ld = 0 to close the latch
+    Write_MMR_Field (WKUP_CTRL_MMR_BASE_ADDRESS + CSL_WKUP_CTRL_MMR_CFG0_DDR16SS_PMCTRL, 0, 1, 31);
+
+    return 0;
+}
+
+#if 1
 /*
  * \brief Run the suspend sequence (set DDR in retention and powerdown the SOC)
  *
@@ -1297,10 +1683,11 @@ Once in low power, raise GPIO1
 void Lpm_enterRetention(void)
 {
 	dbg_line("Lpm_enterRetention: Enter retention");
-#define DO_DM_SUSPEND_RESUME 0
+#define DO_DM_SUSPEND_RESUME 1
 #define DO_RAM_PATTERN_TEST 1
+#define FULL_SEQUENCE 1
 #define RAM_START 0x80000000U
-#define SZ 2500U
+#define SZ 25000U
 
 	if (DO_RAM_PATTERN_TEST) {
 		for (unsigned int i = 0; i < SZ; i++) {
@@ -1311,9 +1698,26 @@ void Lpm_enterRetention(void)
 	Lpm_cleanAllDCache();
 
 	if (DO_RAM_PATTERN_TEST) {
-		dump_HEX((void*)RAM_START, 2048);
+		dump_HEX((void*)RAM_START, 2500);
 	}
-	Lpm_ddrEnterRetention();
+
+	if (FULL_SEQUENCE)
+		Lpm_ddrEnterRetention();
+	else {
+		dbg_line("Lpm_enterRetention: DDR suspend entry");
+		uint32_t *mmrPtr;
+		uint32_t lp_status = 0;
+
+		//Enter SR long with Mem clock gating
+		//Program self refresh mode
+		mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + 0x280);
+		*mmrPtr = (0x51<< 8); //LP_MODE_LONG_SELF_REFRESH
+
+		//poll self refresh mode change
+		mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + 0x564);
+		while(lp_status != 0x10000)
+			lp_status = *mmrPtr & 0x10000;
+	}
 	dbg_line("Lpm_enterRetention: DDR retention done");
 
 	dbg_line("Lpm_enterRetention: Done! Going to wait now");
@@ -1323,7 +1727,24 @@ void Lpm_enterRetention(void)
 	}
 
 #if DO_DM_SUSPEND_RESUME
-ddr_exit_low_power_mode();
+	if (FULL_SEQUENCE)
+		ddr_exit_low_power_mode();
+	else {
+		dbg_line("Lpm_enterRetention: DDR suspend exit");
+		uint32_t *mmrPtr;
+		uint32_t lp_status = 0;
+
+		//Enter SR long with Mem clock gating
+		//Program self refresh mode
+		mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + 0x280);
+		*mmrPtr = (0x2<< 8); //LP_MODE_NONE = 0x2
+
+		//poll self refresh mode change
+		mmrPtr = (uint32_t *) (DDRSS_CTL_BASE + 0x564);
+		while(lp_status != 0x10000)
+			lp_status = *mmrPtr & 0x10000;
+		dbg_line("Lpm_enterRetention: DDR exited suspend");
+	}
 
 	Lpm_cleanAllDCache();
 	if (DO_RAM_PATTERN_TEST) {
@@ -1350,4 +1771,92 @@ ddr_exit_low_power_mode();
 #endif
 	while(1){};
 }
+#else
+void Lpm_enterRetention(void)
+{
+	dbg_line("Lpm_enterRetention: Enter retention");
+#define DO_DM_SUSPEND_RESUME 0
+#define DO_RAM_PATTERN_TEST 1
+#define RAM_START 0x80000000U
+#define SZ 2500U
 
+//DDR Defines
+#define NUM_TIMES           (1*1024)
+#define SPACING             (1024*1024/4)
+
+
+    uint32_t i =0;
+    uint32_t j =0;
+    uint64_t *mem_ptr = (uint64_t *) 0x80000000;
+    uint32_t errors = 0;
+
+    WKUP_CTRL_MMR_unlock_all();
+    MCU_PADCONFIG_MMR_unlock_all();
+
+	Lpm_cleanAllDCache();
+
+
+    //******* IO Only + DDR Entry Sequence ****
+
+    //Set Wakeup Source to CANUART IO Daisy Chain; Configure pinmux to use MCU CAN as wakeup source
+dbg_line("Lpm_enterRetention: configureCANIO_Wakeup\n");
+    //configureCANIO_Wakeup();
+
+dbg_line("Enables DDR SR and Data retention\n");
+    //Enables DDR SR and Data retention
+    ddrLPM_Entry(LPDDR4);
+
+//dbg_line("Enable IO Isolation\n");
+    //Enable IO Isolation
+//    ioIsolationEnable();
+    //printf("IO ISO_0 Status: %d\n", getIOIsoStatus());
+
+//dbg_line("Enable CANIO Mode\n");
+    //Enable CANIO Mode
+//    enterCANIORetention();
+    //printf("CANIO Mode: %d\n", getCANIOStatus());
+
+dbg_line("Generate the LD signal to latch retention signal\n");
+    //Generate the LD signal to latch retention signal
+    generateLD_DataRet();
+
+dbg_line("disableLPM_PMIC_EN\n");
+    //AM62A signal the PMIC to power down the supplies except VDDSHV_CANUART, VDD_CANUART, DDR and IO Supplies. Set PMIC_LPM_EN transitions 1->0
+    disableLPM_PMIC_EN();
+
+
+#if DO_DM_SUSPEND_RESUME
+ddr_exit_low_power_mode();
+
+	Lpm_cleanAllDCache();
+	if (DO_RAM_PATTERN_TEST) {
+		dump_HEX((void*)RAM_START, 2048);
+	}
+	Lpm_cleanAllDCache();
+	int error=0;
+	for (unsigned int i = 0; i < SZ; i++) {
+		uint32_t val = readl(RAM_START + 4 * i);
+		if (val != i) {
+			error++;
+			if (error == 50) {
+				Lpm_debugFullPrintf("too many errors\n");
+			}
+			if (error < 50) {
+				Lpm_debugFullPrintf("0x%x != 0x%x\n", i, val);
+			}
+		}
+	}
+	Lpm_cleanAllDCache();
+	Lpm_debugFullPrintf("end check 0x%x error(s)\n", error);
+#else
+	for (unsigned int i = 0; i < 1000000U; i++) {
+		delay_1us();
+	}
+
+dbg_line("Lpm_setupPmic\n");
+	Lpm_setupPmic();
+#endif
+dbg_line("end\n");
+	while(1){};
+}
+#endif
