@@ -1746,11 +1746,9 @@ void Lpm_enterRetention(void)
 		dbg_line("Lpm_enterRetention: DDR exited suspend");
 	}
 
-	Lpm_cleanAllDCache();
 	if (DO_RAM_PATTERN_TEST) {
 		dump_HEX((void*)RAM_START, 2048);
 	}
-	Lpm_cleanAllDCache();
 	int error=0;
 	for (unsigned int i = 0; i < SZ; i++) {
 		uint32_t val = readl(RAM_START + 4 * i);
@@ -1764,7 +1762,6 @@ void Lpm_enterRetention(void)
 			}
 		}
 	}
-	Lpm_cleanAllDCache();
 	Lpm_debugFullPrintf("end check 0x%x error(s)\n", error);
 #else
 	Lpm_setupPmic();
