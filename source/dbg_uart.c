@@ -20,6 +20,8 @@
 
 static const unsigned int do_wait = 1;
 
+#define DEBUG_ENABLED 1
+#ifdef DEBUG_ENABLED
 static inline void dbg_writel(unsigned int addr, unsigned int val)
 {
     *(volatile unsigned int *) (addr) = val;
@@ -295,4 +297,29 @@ __maybe_unused static void Lpm_debugPrintf(const char *pcString, ...)
     /* End the varargs processing. */
     va_end(vaArgP);
 }
+#else
+__maybe_unused static inline void dbg_writel(unsigned int addr, unsigned int val) {}
 
+__maybe_unused static inline unsigned int dbg_readl(unsigned int addr) { return 0;}
+
+
+__maybe_unused static void _dbg_putc(unsigned int base_addr, unsigned char c) {}
+
+__maybe_unused static void dbg_putc(unsigned char c) {}
+
+__maybe_unused static void dbg_puts(const char *str) {}
+
+__maybe_unused static void dbg_line(const char *str) {}
+
+__maybe_unused static void dump_byte(unsigned char byte) {}
+
+__maybe_unused static void dump_HEX(void *addr, unsigned int size) {}
+
+__maybe_unused static void dump_reg(char *name, unsigned int addr) {}
+
+__maybe_unused static void Lpm_debugPutS(const char *str, unsigned int len) {}
+
+__maybe_unused static int32_t Lpm_debugConvertVal(uint32_t ulValue, uint32_t ulPos, uint32_t ulCount, char cFill, char *pcBuf) {return 0;}
+
+__maybe_unused static void Lpm_debugPrintf(const char *pcString, ...) {}
+#endif
