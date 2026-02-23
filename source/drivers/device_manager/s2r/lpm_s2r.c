@@ -795,7 +795,7 @@ static int Lpm_i2cReadTimeout(char add, unsigned char *rxd, unsigned int timeout
 
     if(loop >= timeout)
     {
-        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout loop exceed %d\n", timeout);
+        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout loop exceed 0x%x\n", timeout);
         return(-1);
     }
 
@@ -811,7 +811,7 @@ static int Lpm_i2cReadTimeout(char add, unsigned char *rxd, unsigned int timeout
 
     if(loop >= timeout)
     {
-        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for XRDY: loop exceed %d\n", timeout);
+        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for XRDY: loop exceed 0x%d\n", timeout);
         return(-1);
     }
 
@@ -825,7 +825,7 @@ static int Lpm_i2cReadTimeout(char add, unsigned char *rxd, unsigned int timeout
 
     if(loop >= timeout)
     {
-        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for ARDY: loop exceed %d\n", timeout);
+        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for ARDY: loop exceed 0x%d\n", timeout);
         return(-1);
     }
 
@@ -843,7 +843,7 @@ static int Lpm_i2cReadTimeout(char add, unsigned char *rxd, unsigned int timeout
 
     if(loop >= timeout)
     {
-        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for RRDY: loop exceed %d\n", timeout);
+        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for RRDY: loop exceed 0x%d\n", timeout);
         return(-1);
     }
 
@@ -855,7 +855,7 @@ static int Lpm_i2cReadTimeout(char add, unsigned char *rxd, unsigned int timeout
 
     if(loop >= timeout)
     {
-        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for ARDY: loop exceed %d\n", timeout);
+        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for ARDY: loop exceed 0x%d\n", timeout);
         return(-1);
     }
 
