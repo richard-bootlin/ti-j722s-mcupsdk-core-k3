@@ -209,7 +209,7 @@ static int32_t fsp_shift(void)
 		--timeout;
 	}
 	if (timeout == 0U) {
-		Lpm_debugFullPrintf("Failed freq change request\n");
+		dbg_line("Failed freq change request\n");
 		ret = -1;
 	}
 
@@ -218,7 +218,7 @@ static int32_t fsp_shift(void)
 	if (val == DDR4_FSP_CLKCHNG_REQ_TYPE_FSP0) {
 		pll_bypass(&main_pll12, 1);
 	} else {
-		Lpm_debugFullPrintf("Failed setting PLL frequency to the requested frequency\n");
+		dbg_line("Failed setting PLL frequency to the requested frequency\n");
 		ret = -1;
 	}
 
@@ -232,7 +232,7 @@ static int32_t fsp_shift(void)
 		--timeout;
 	}
 	if (timeout == 0U) {
-		Lpm_debugFullPrintf("Timeout waiting for request to go away\n");
+		dbg_line("Timeout waiting for request to go away\n");
 		ret = -1;
 	}
 
@@ -248,7 +248,7 @@ static int32_t fsp_shift(void)
 		--timeout;
 	}
 	if (timeout == 0U) {
-		Lpm_debugFullPrintf("Timeout waiting for CHNG_DDR4_FSP_ACK bit to be 1\n");
+		dbg_line("Timeout waiting for CHNG_DDR4_FSP_ACK bit to be 1\n");
 		ret = -1;
 	}
 
@@ -390,7 +390,7 @@ static void Lpm_ddrEnterRetention(void)
 
 	/* If shift is not successful, then return fail */
 	if (((readl(DDR_CTRL_BASE + DENALI_CTL_179__SFR_OFFS) & 0x3000000U) >> 24U) != 0U) {
-		Lpm_debugFullPrintf("Failed shifting DDR to boot frequency\n");
+		dbg_line("Failed shifting DDR to boot frequency\n");
 	}
 
 	enter_lpm_self_refresh();
@@ -459,23 +459,23 @@ static void poll_for_init_completion(struct emif_handle_s *h)
 	while (((SOC_read32(h->ctl_cfg_base_addr + DDRSS_PI_REGISTER_BLOCK__OFFS + DENALI_PI_87__SFR_OFFS)) & 0x1) != 0x1) { /* Poll for PI Init completion */
 	}
 #else
-	Lpm_debugFullPrintf("wait for PI init\n");
+	dbg_line("wait for PI init\n");
 	i = 10000;
 	/* Poll for PI Init completion */
 	while (((SOC_read32(h->ctl_cfg_base_addr + (u64) DDRSS_PI_REGISTER_BLOCK__OFFS + (u64) DENALI_PI_87__SFR_OFFS)) & 0x1U) != 0x1U) {
 		if (i-- < 0) {
-			Lpm_debugFullPrintf("TIMEOUT on Poll for PI Init completion\n");
+			dbg_line("TIMEOUT on Poll for PI Init completion\n");
 
 			break;
 		}
 	}
-	Lpm_debugFullPrintf("wait for ctl init\n");
+	dbg_line("wait for ctl init\n");
 	// TODO: we are stuck in there:
 	i = 10000;
 	/* Poll for CTL Init completion */
 	while (((SOC_read32(h->ctl_cfg_base_addr + (u64) DENALI_CTL_350__SFR_OFFS)) & 0x02000000U) != 0x02000000U) {
 		if (i-- < 0) {
-			Lpm_debugFullPrintf("TIMEOUT on Poll for CTL Init completion\n");
+			dbg_line("TIMEOUT on Poll for CTL Init completion\n");
 
 			break;
 		}
@@ -685,17 +685,17 @@ s32 ddr_exit_low_power_mode(void)
 
 	/* Use WKUP_CTRL.WKUP_WWD0_CTRL to ungate clock to RTI */
 	writel(WWD_RUN, WKUP_CTRL_MMR_BASE + WKUP_WWD0_CTRL);
-    Lpm_debugFullPrintf("configure_sdram_region_idx\n");
+    dbg_line("configure_sdram_region_idx\n");
 	configure_sdram_region_idx(&Emifhandle, SDRAM_IDX, REGION_IDX);
-    Lpm_debugFullPrintf("configure_CTL_registers\n");
+    dbg_line("configure_CTL_registers\n");
 	configure_CTL_registers(&Emifhandle);           /* Configure Controller registers */
-    Lpm_debugFullPrintf("configure_PI_registers\n");
+    dbg_line("configure_PI_registers\n");
 	configure_PI_registers(&Emifhandle);            /* Configure PI registers */
-    Lpm_debugFullPrintf("configure_PHY_registers\n");
+    dbg_line("configure_PHY_registers\n");
 	configure_PHY_registers(&Emifhandle);           /* Configure PHY registers */
 	//restore_registers_optimized(&Emifhandle);       /* Restore register values before LPM */
 
-    Lpm_debugFullPrintf("end configure_PHY_registers\n");
+    dbg_line("end configure_PHY_registers\n");
 	/* PHY_SET_DFI_INPUT_3:RW_D:24:4:=0x00 PHY_SET_DFI_INPUT_2:RW_D:16:4:=0x00 PHY_SET_DFI_INPUT_1:RW_D:8:4:=0x00 PHY_SET_DFI_INPUT_0:RW_D:0:4:=0x00 */
 	rd_val = SOC_read32(ctl_addr + CSL_EMIF_CTLCFG_DENALI_PHY_1820);
 	rd_val = (rd_val | 0x40000U);
@@ -731,7 +731,7 @@ s32 ddr_exit_low_power_mode(void)
 	rd_val = (rd_val & 0xFFFF00FFU) | (0x1U << 8);
 	SOC_write32(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_146, rd_val);
 
-    Lpm_debugFullPrintf("WriteMMR\n");
+    dbg_line("WriteMMR\n");
 	/* PI_DRAM_INIT_EN=1 */
 	Write_MMR_Field(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_150, 0x1, 1, 8);
 
@@ -744,7 +744,7 @@ s32 ddr_exit_low_power_mode(void)
 	Write_MMR_Field(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_165, 0x2, 5, 16);      /* DENALI_PI_165 PI_FREQ_RETENTION_NUM bits 20:16 */
 	Write_MMR_Field(Emifhandle.ctl_cfg_base_addr + CSL_EMIF_CTLCFG_DENALI_PI_11, 0x2, 5, 0);        /* DENALI_PI_11 PI_INIT_WORK_FREQ bits 4:0 */
 
-    Lpm_debugFullPrintf("put_ddrss_in_data_retention_thru_wkup_mmr\n");
+    dbg_line("put_ddrss_in_data_retention_thru_wkup_mmr\n");
 	/* De-asserting data retention pin and wake Control bits */
 	put_ddrss_in_data_retention_thru_wkup_mmr(DDR16SS_RETENTION_DIS);
 
@@ -753,13 +753,13 @@ s32 ddr_exit_low_power_mode(void)
 		delay_1us();
 	}
 
-    Lpm_debugFullPrintf("start_PI_CTL_init\n");
+    dbg_line("start_PI_CTL_init\n");
 	/* Start Initialization [PI_START=1 and START=1] */
 	start_PI_CTL_init(&Emifhandle);
 
-    Lpm_debugFullPrintf("poll_for_init_completion\n");
+    dbg_line("poll_for_init_completion\n");
 	poll_for_init_completion(&Emifhandle); /* Poll for init completion */
-    Lpm_debugFullPrintf("done\n");
+    dbg_line("done\n");
 
 	return ret;
 }
@@ -795,7 +795,7 @@ static int Lpm_i2cReadTimeout(char add, unsigned char *rxd, unsigned int timeout
 
     if(loop >= timeout)
     {
-        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout loop exceed 0x%x\n", timeout);
+        dump_val("Lpm_i2cReadTimeout: timeout loop exceed ", timeout);
         return(-1);
     }
 
@@ -811,7 +811,7 @@ static int Lpm_i2cReadTimeout(char add, unsigned char *rxd, unsigned int timeout
 
     if(loop >= timeout)
     {
-        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for XRDY: loop exceed 0x%d\n", timeout);
+        dump_val("Lpm_i2cReadTimeout: timeout for XRDY: loop exceed ", timeout);
         return(-1);
     }
 
@@ -825,7 +825,7 @@ static int Lpm_i2cReadTimeout(char add, unsigned char *rxd, unsigned int timeout
 
     if(loop >= timeout)
     {
-        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for ARDY: loop exceed 0x%d\n", timeout);
+        dump_val("Lpm_i2cReadTimeout: timeout for ARDY: loop exceed ", timeout);
         return(-1);
     }
 
@@ -843,7 +843,7 @@ static int Lpm_i2cReadTimeout(char add, unsigned char *rxd, unsigned int timeout
 
     if(loop >= timeout)
     {
-        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for RRDY: loop exceed 0x%d\n", timeout);
+        dump_val("Lpm_i2cReadTimeout: timeout for RRDY: loop exceed ", timeout);
         return(-1);
     }
 
@@ -855,7 +855,7 @@ static int Lpm_i2cReadTimeout(char add, unsigned char *rxd, unsigned int timeout
 
     if(loop >= timeout)
     {
-        Lpm_debugFullPrintf("Lpm_i2cReadTimeout: timeout for ARDY: loop exceed 0x%d\n", timeout);
+        dump_val("Lpm_i2cReadTimeout: timeout for ARDY: loop exceed ", timeout);
         return(-1);
     }
 
@@ -990,7 +990,7 @@ static uint8_t Lpm_readPmic(uint8_t reg)
     unsigned char rxd;
     Lpm_i2cConfigWkup(PMIC_ADDR);
     rxd = Lpm_i2cRead(reg);
-    Lpm_debugFullPrintf("Lpm_readPmic: reg=0x%x 0x%x\n", reg, rxd);
+    dump_val2("Lpm_readPmic: reg=", reg, rxd);
 
     return(rxd);
 }
@@ -999,7 +999,7 @@ static void Lpm_writePmic(uint8_t reg, uint8_t val)
 {
     Lpm_i2cConfigWkup(PMIC_ADDR);
     Lpm_i2cWrite(reg, val);
-    Lpm_debugFullPrintf("Lpm_writePmic: reg=0x%x 0x%x\n", reg, val);
+    dump_val2("Lpm_writePmic: reg=", reg, val);
 }
 
 static void Lpm_ClearPmicInterrupts(void)
@@ -1016,25 +1016,25 @@ static void Lpm_ClearPmicInterrupts(void)
     if(int_top & (1 << 0))
     {
         val = Lpm_i2cRead(0x5B);
-        Lpm_debugFullPrintf("INT_BUCK = 0x%02X\n", val);
+        dump_val("INT_BUCK", val);
         if (val & 1)
         {
             val1 = Lpm_i2cRead(0x5C);
-            Lpm_debugFullPrintf("INT_BUCK1_2 = 0x%02X\n", val1);
+            dump_val("INT_BUCK1_2", val1);
             Lpm_i2cWrite(0x5C, val1);
         }
 
         if(val & (1 << 1))
         {
             val1 = Lpm_i2cRead(0x5D);
-            Lpm_debugFullPrintf("INT_BUCK3_4 = 0x%02X\n", val1);
+            dump_val("INT_BUCK3_4", val1);
             Lpm_i2cWrite(0x5D, val1);
         }
 
         if(val & (1 << 2))
         {
             val1 = Lpm_i2cRead(0x5E);
-            Lpm_debugFullPrintf("INT_BUCK5 = 0x%02X\n", val1);
+            dump_val("INT_BUCK5", val1);
             Lpm_i2cWrite(0x5E, val1);
         }
     }
@@ -1042,23 +1042,23 @@ static void Lpm_ClearPmicInterrupts(void)
     if(int_top & (1 << 1))
     {
         val = Lpm_i2cRead(0x5F);
-        Lpm_debugFullPrintf("INT_LDO_VMON = 0x%02X\n", val);
+        dump_val("INT_LDO_VMON", val);
         if(val & 1)
         {
             val1 = Lpm_i2cRead(0x60);
-            Lpm_debugFullPrintf("INT_LDO1_2 = 0x%02X\n", val1);
+            dump_val("INT_LDO1_2", val1);
             Lpm_i2cWrite(0x60, val1);
         }
         if(val & (1 << 1))
         {
             val1 = Lpm_i2cRead(0x61);
-            Lpm_debugFullPrintf("INT_LDO3_4 = 0x%02X\n", val1);
+            dump_val("INT_LDO3_4", val1);
             Lpm_i2cWrite(0x61, val1);
         }
         if(val & (1 << 2))
         {
             val1 = Lpm_i2cRead(0x62);
-            Lpm_debugFullPrintf("INT_VMON = 0x%02X\n", val1);
+            dump_val("INT_VMON", val1);
             Lpm_i2cWrite(0x62, val1);
         }
     }
@@ -1066,11 +1066,11 @@ static void Lpm_ClearPmicInterrupts(void)
     if(int_top & (1 << 2))
     {
         val = Lpm_i2cRead(0x63);
-        Lpm_debugFullPrintf("INT_GPIO = 0x%02X\n", val);
+        dump_val("INT_GPIO", val);
         if(val & (1 << 3))
         {
             val1 = Lpm_i2cRead(0x64);
-            Lpm_debugFullPrintf("INT_GPIO1_8 = 0x%02X\n", val1);
+            dump_val("INT_GPIO1_8", val1);
             Lpm_i2cWrite(0x64, val1);
         }
         Lpm_i2cWrite(0x63, val); // clear GPIO9, GPIO10, GPIO11
@@ -1079,58 +1079,58 @@ static void Lpm_ClearPmicInterrupts(void)
     if(int_top & (1 << 3))
     {
         val = Lpm_i2cRead(0x65);
-        Lpm_debugFullPrintf("INT_STARTUP = 0x%02X\n", val);
+        dump_val("INT_STARTUP", val);
         Lpm_i2cWrite(0x65, val);
     }
 
     if(int_top & (1 << 4))
     {
         val = Lpm_i2cRead(0x66);
-        Lpm_debugFullPrintf("INT_MISC = 0x%02X\n", val);
+        dump_val("INT_MISC", val);
         Lpm_i2cWrite(0x66, val);
     }
 
     if(int_top & (1 << 5))
     {
         val = Lpm_i2cRead(0x67);
-        Lpm_debugFullPrintf("INT_MODERATE_ERR = 0x%02X\n", val);
+        dump_val("INT_MODERATE_ERR", val);
         Lpm_i2cWrite(0x67, val);
     }
 
     if(int_top & (1 << 6))
     {
         val = Lpm_i2cRead(0x68);
-        Lpm_debugFullPrintf("INT_SEVERE_ERR = 0x%02X\n", val);
+        dump_val("INT_SEVERE_ERR", val);
         Lpm_i2cWrite(0x68, val);
     }
 
     if(int_top & (1 << 7))
     {
         val = Lpm_i2cRead(0x69);
-        Lpm_debugFullPrintf("INT_FSM_ERR = 0x%02X\n", val);
+        dump_val("INT_FSM_ERR", val);
         if(val & (1 << 4))
         {
             val1 = Lpm_i2cRead(0x6A);
-            Lpm_debugFullPrintf("INT_COMM_ERR = 0x%02X\n", val1);
+            dump_val("INT_COMM_ERR", val1);
             Lpm_i2cWrite(0x6A, val1);
         }
         if(val & (1 << 5))
         {
             val1 = Lpm_i2cRead(0x6B);
-            Lpm_debugFullPrintf("INT_READBACK_ERR = 0x%02X\n", val1);
+            dump_val("INT_READBACK_ERR", val1);
             Lpm_i2cWrite(0x6B, val1);
         }
         if(val & (1 << 6))
         {
             val1 = Lpm_i2cRead(0x6C);
-            Lpm_debugFullPrintf("INT_ESM = 0x%02X\n", val1);
+            dump_val("INT_ESM", val1);
             Lpm_i2cWrite(0x6C, val1);
         }
         Lpm_i2cWrite(0x69, val); // clear INT_FSM_ERR
     }
 
     int_top = Lpm_i2cRead(0x5A);
-    Lpm_debugFullPrintf("INT_TOP = 0x%02X\n", int_top);
+    dump_val("INT_TOP", int_top);
 }
 
 #define PMIC_CONFIG1_REGADDR                   (0x7dU)
@@ -1755,14 +1755,14 @@ void Lpm_enterRetention(void)
 		if (val != i) {
 			error++;
 			if (error == 50) {
-				Lpm_debugFullPrintf("too many errors\n");
+				dbg_line("too many errors\n");
 			}
 			if (error < 50) {
-				Lpm_debugFullPrintf("0x%x != 0x%x\n", i, val);
+				dump_val2("err", i, val);
 			}
 		}
 	}
-	Lpm_debugFullPrintf("end check 0x%x error(s)\n", error);
+	dump_val("end check errors: ", error);
 #else
 	Lpm_setupPmic();
 #endif
@@ -1836,15 +1836,15 @@ ddr_exit_low_power_mode();
 		if (val != i) {
 			error++;
 			if (error == 50) {
-				Lpm_debugFullPrintf("too many errors\n");
+				dbg_line("too many errors");
 			}
 			if (error < 50) {
-				Lpm_debugFullPrintf("0x%x != 0x%x\n", i, val);
+				dump_val2("err", i, val);
 			}
 		}
 	}
 	Lpm_cleanAllDCache();
-	Lpm_debugFullPrintf("end check 0x%x error(s)\n", error);
+	dump_val("end check errors ", error);
 #else
 	for (unsigned int i = 0; i < 1000000U; i++) {
 		delay_1us();
