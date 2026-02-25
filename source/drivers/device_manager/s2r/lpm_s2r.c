@@ -1701,9 +1701,9 @@ void Lpm_enterRetention(void)
 		dump_HEX((void*)RAM_START, 2500);
 	}
 
-	if (FULL_SEQUENCE)
+	if (FULL_SEQUENCE) {
 		Lpm_ddrEnterRetention();
-	else {
+	} else {
 		dbg_line("Lpm_enterRetention: DDR suspend entry");
 		uint32_t *mmrPtr;
 		uint32_t lp_status = 0;
