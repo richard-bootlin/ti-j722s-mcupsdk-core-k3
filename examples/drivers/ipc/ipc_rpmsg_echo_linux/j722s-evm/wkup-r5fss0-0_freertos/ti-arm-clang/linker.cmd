@@ -134,5 +134,5 @@ MEMORY
     DDR_IPC_RESOURCE_TABLE_LINUX  : ORIGIN = 0xA0100000, LENGTH = 0x400      /* For resource table   */
     DDR_IPC_TRACE_LINUX           : ORIGIN = 0xA0100400, LENGTH = 0xFFC00    /* IPC trace buffer     */
     DDR_IPC_VRING_RTOS            : ORIGIN = 0xA5000000, LENGTH = 0x1C00000   /* IPC VRING for RTOS/NoRTOS */
-    MCU1_0_LPM_CTX_BUFF (RW)      : ORIGIN = 0xA0FC0000, LENGTH = 0x40000    /* LPM save addr */
+    MCU1_0_LPM_CTX_BUFF (RW)      : ORIGIN = 0xA10C0000, LENGTH = 0x40000    /* LPM save addr */
 }
