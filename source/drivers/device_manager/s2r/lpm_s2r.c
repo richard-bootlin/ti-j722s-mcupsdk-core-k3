@@ -1291,7 +1291,7 @@ Once in low power, raise GPIO1
 	Lpm_writePmic(0x86, 0x01);
 
 	/* create falling edge on PMIC_GPIO1 */
-//	writel(0, 0x43018080);
+	writel(0, 0x43018080);
 
 
 }
