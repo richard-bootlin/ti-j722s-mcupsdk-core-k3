@@ -1720,11 +1720,7 @@ void Lpm_enterRetention(void)
 	}
 	dbg_line("Lpm_enterRetention: DDR retention done");
 
-	dbg_line("Lpm_enterRetention: Done! Going to wait now");
-
-	for (unsigned int i = 0; i < 3000000U; i++) {
-		delay_1us();
-	}
+	dbg_line("Lpm_enterRetention: Done! Going to wait now!");
 
 #if DO_DM_SUSPEND_RESUME
 	if (FULL_SEQUENCE)
