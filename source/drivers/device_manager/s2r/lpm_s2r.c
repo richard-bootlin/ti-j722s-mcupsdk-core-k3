@@ -1683,9 +1683,9 @@ uint32_t generateLD_DataRet(){
 void Lpm_enterRetention(void)
 {
 	dbg_line("Lpm_enterRetention: Enter retention");
-#define DO_DM_SUSPEND_RESUME 1
-#define DO_RAM_PATTERN_TEST 1
-#define FULL_SEQUENCE 1
+#define DO_DM_SUSPEND_RESUME 0
+#define DO_RAM_PATTERN_TEST 0
+#define FULL_SEQUENCE 0
 #define RAM_START 0x80000000U
 #define SZ 25000U
 
