@@ -142,6 +142,30 @@ void S2R_goRetention(void)
 
     dbg_line("Suspending");
 
+    int i=0;
+    uint8_t *code, *sram;
+    code = (uint8_t *)&lpm_sram_s2r[0];
+    sram = (uint8_t *)SCICLIENT_S2R_SRAM_CODE_ADDRESS;
+    for(i = 0; i < LPM_SRAM_S2R_SIZE_IN_BYTES; i++) {
+            if (*code != *sram)
+                    dbg_line("error copying to SRAM");
+            code +=1;
+            sram +=1;
+    }
+
+    for (unsigned long j = 0; j < 5 ; j++) { /* 0x80 for full mem */
+            uint32_t cksum = 0;
+            uint32_t addr = 0x80000000UL + 0x1000000UL * j;
+            for (unsigned long i = 0; i < 0x1000000; i+= (sizeof(uint32_t)))
+                    cksum ^= *(uint32_t *)(addr + i);
+            dump_val2("cksum=from ", addr, cksum);
+    }
+
+    for (unsigned long j = 0; j < 1 ; j++) {
+            uint32_t addr = 0x80000000UL + 0x1000000UL * j;
+	    dump_HEX((uint32_t *)(addr), 0x1000);
+    }
+
     asm_function();
 
     /* Never reach this point */
