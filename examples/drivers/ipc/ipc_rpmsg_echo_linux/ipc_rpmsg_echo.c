@@ -577,6 +577,7 @@ void lpm_mcu_suspend_task(void* args)
         /* Wait for suspend from linux */
         SemaphoreP_pend(&gLpmSuspendSem, SystemP_WAIT_FOREVER);
 
+#if !defined (SOC_J722S)
         status = Sciclient_lpmGetNextHostState(SystemP_WAIT_FOREVER, &nextHostState);
         if (status != SystemP_SUCCESS)
         {
@@ -584,7 +585,9 @@ void lpm_mcu_suspend_task(void* args)
             IpcNotify_sendMsg(gbSuspendRemotecoreID, IPC_NOTIFY_CLIENT_ID_RP_MBOX, IPC_NOTIFY_RP_MBOX_SUSPEND_CANCEL, 1u);
             continue;
         }
-
+#else
+        nextHostState = TISCI_MSG_VALUE_HOST_STATE_OFF;
+#endif
         DebugP_log("[IPC RPMSG ECHO] Next MCU mode is %d\r\n", nextHostState);
 
         switch (nextHostState)
