@@ -72,6 +72,7 @@ FILES_common := \
     sciclient_firewall.c \
     sciclient_fmwSecureProxyMap.c \
     sciclient_irq_rm.c \
+    sciclient_lpm.c \
     sciclient_pm.c \
     sciclient_procboot.c \
     sciclient_rm.c \
