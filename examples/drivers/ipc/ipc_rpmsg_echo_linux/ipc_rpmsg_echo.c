@@ -584,6 +584,10 @@ void lpm_mcu_suspend_task(void* args)
             IpcNotify_sendMsg(gbSuspendRemotecoreID, IPC_NOTIFY_CLIENT_ID_RP_MBOX, IPC_NOTIFY_RP_MBOX_SUSPEND_CANCEL, 1u);
             continue;
         }
+#if defined(SOC_J722S)
+	/* Temporary hack for j722s */
+	nextHostState = TISCI_MSG_VALUE_HOST_STATE_OFF;
+#endif
 
         DebugP_log("[IPC RPMSG ECHO] Next MCU mode is %d\r\n", nextHostState);
 
