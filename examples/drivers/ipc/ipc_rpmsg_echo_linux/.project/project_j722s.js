@@ -155,6 +155,18 @@ const defines_wkup_r5 = {
     ],
 }
 
+const defines_mcu = {
+    common:[
+        "REMOTE_CORE",
+    ]
+}
+
+const defines_c75 = {
+    common:[
+        "REMOTE_CORE",
+    ]
+};
+
 const syscfgfile = "../example.syscfg";
 
 const readmeDoxygenPageTag = "EXAMPLES_DRIVERS_IPC_RPMESSAGE_LINUX_ECHO";
@@ -306,6 +318,7 @@ function getComponentBuildProperty(buildOption) {
         build_property.libdirs = libdirs_freertos_mcu_r5f;
         build_property.libs = libs_freertos_mcu_r5f;
         build_property.templates = templates_freertos_mcu_r5f;
+        build_property.defines = defines_mcu;
     }
     else if(buildOption.cpu.match(/wkup-r5f*/))
     {
@@ -320,18 +333,21 @@ function getComponentBuildProperty(buildOption) {
         build_property.libdirs = libdirs_freertos_main_r5f;
         build_property.libs = libs_freertos_main_r5f;
         build_property.templates = templates_freertos_main_r5f;
+        build_property.defines = defines_mcu;
     }
     else if(buildOption.cpu.match(/c75ss0-0*/)) {
         build_property.includes = includes_freertos_c75ss0;
         build_property.libdirs = libdirs_freertos_c75ss0;
         build_property.libs = libs_freertos_c75ss0;
         build_property.templates = templates_freertos_c75ss0;
+        build_property.defines = defines_c75;
     }
     else if(buildOption.cpu.match(/c75ss1-0*/)) {
         build_property.includes = includes_freertos_c75ss1;
         build_property.libdirs = libdirs_freertos_c75ss1;
         build_property.libs = libs_freertos_c75ss1;
         build_property.templates = templates_freertos_c75ss1;
+        build_property.defines = defines_c75;
     }
 
     return build_property;

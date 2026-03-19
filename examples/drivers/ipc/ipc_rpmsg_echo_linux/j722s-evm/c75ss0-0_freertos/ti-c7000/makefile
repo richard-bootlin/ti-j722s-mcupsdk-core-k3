@@ -66,6 +66,7 @@ INCLUDES_common := \
 
 DEFINES_common := \
 	-DSOC_J722S \
+	-DREMOTE_CORE \
 
 CFLAGS_common := \
 	-DBUILD_C75X_1 \
