@@ -20,6 +20,11 @@
 
 #define DEBUG_ENABLED 1
 #ifdef DEBUG_ENABLED
+ #ifdef DebugP_log
+  #undef DebugP_log
+ #endif
+#define DebugP_log(...) do { ; } while (0)
+
 static inline void dbg_writel(unsigned int addr, unsigned int val)
 {
     *(volatile unsigned int *) (addr) = val;
@@ -83,6 +88,23 @@ __maybe_unused static void dbg_line(const char *str)
     dbg_putc('\n');
 }
 
+static void dump_decimal(unsigned int val)
+{
+    char result[10] = { '\0' };
+    char *ptr = result + 8;
+    int i;
+
+    for (i = 9; i > 0; i--)
+    {
+	    result[i - 1] = '0' + val % 10;
+	    val /= 10;
+	    if (result[i - 1] != '0')
+		    ptr = result + i - 1;
+    }
+
+    dbg_puts(ptr);
+}
+
 static void dump_byte(unsigned char byte)
 {
     const char *const hex = "0123456789abcdef";
@@ -99,8 +121,9 @@ static void dump_byte(unsigned char byte)
 __maybe_unused static void dump_HEX(void *addr, unsigned int size)
 {
     unsigned char *c = addr;
+    unsigned int i;
 
-    for (unsigned int i = 1; i <= size; i++)
+    for (i = 1; i <= size; i++)
     {
         dump_byte(*c);
         if ((i % 16) == 0)
@@ -111,7 +134,7 @@ __maybe_unused static void dump_HEX(void *addr, unsigned int size)
     }
 }
 
-__maybe_unused static void dump_reg(char *name, unsigned int addr)
+__maybe_unused static void dump_reg(const char *name, unsigned int addr)
 {
     unsigned int val = dbg_readl(addr);
 
@@ -124,7 +147,7 @@ __maybe_unused static void dump_reg(char *name, unsigned int addr)
     dbg_puts("\r\n");
 }
 
-__maybe_unused static void dump_val2(char *str, unsigned int val, unsigned int val2)
+__maybe_unused static void dump_val2(const char *str, unsigned int val, unsigned int val2)
 {
     dbg_puts(str);
     dbg_puts("0x");
@@ -140,7 +163,7 @@ __maybe_unused static void dump_val2(char *str, unsigned int val, unsigned int v
     dbg_puts("\r\n");
 }
 
-__maybe_unused static void dump_val(char *str, unsigned int val)
+__maybe_unused static void dump_val(const char *str, unsigned int val)
 {
     dbg_puts(str);
     dbg_puts("0x");
@@ -151,8 +174,15 @@ __maybe_unused static void dump_val(char *str, unsigned int val)
     dbg_puts("\r\n");
 }
 
+__maybe_unused static void dump_vald(const char *str, unsigned int val)
+{
+    dbg_puts(str);
+    dbg_puts(": ");
+    dump_decimal(val);
+    dbg_puts("\r\n");
+}
 
-__maybe_unused static void dump_str(char *name, char *str)
+__maybe_unused static void dump_str(const char *name, const char *str)
 {
     dbg_puts(name);
     dbg_puts(str);
@@ -175,12 +205,15 @@ __maybe_unused static void dump_byte(unsigned char byte) {}
 
 __maybe_unused static void dump_HEX(void *addr, unsigned int size) {}
 
-__maybe_unused static void dump_reg(char *name, unsigned int addr) {}
+__maybe_unused static void dump_reg(const char *name, unsigned int addr) {}
 
-__maybe_unused static void dump_val2(char *str, unsigned int val, unsigned int val2) {}
+__maybe_unused static void dump_val2(const char *str, unsigned int val, unsigned int val2) {}
 
-__maybe_unused static void dump_val(char *str, unsigned int val) {}
+__maybe_unused static void dump_val(const char *str, unsigned int val) {}
 
-__maybe_unused static void dump_str(char *name, char *str) {}
+__maybe_unused static void dump_str(const char *name, const char *str) {}
 
+__maybe_unused static void dump_vald(const char *str, unsigned int val) {}
 #endif
+#define TRACE dump_vald(__func__, __LINE__)
+#define DUMP_VAR(var_name) dump_val(# var_name, var_name)
