@@ -469,8 +469,10 @@ void ipc_rp_mbox_callback(uint16_t remoteCoreId, uint16_t clientId, uint32_t msg
         }
         else if (msgValue == IPC_NOTIFY_RP_MBOX_SUSPEND_SYSTEM) /* Suspend request received from linux during LPM suspend */
         {
+#if defined(REMOTE_CORE)
             gbSuspendRemotecoreID = remoteCoreId;
             SemaphoreP_post(&gLpmSuspendSem);
+#endif
         }
         else if (msgValue == IPC_NOTIFY_RP_MBOX_ECHO_REQUEST) /* This message is received after resuming from the MCU only LPM. */
         {
