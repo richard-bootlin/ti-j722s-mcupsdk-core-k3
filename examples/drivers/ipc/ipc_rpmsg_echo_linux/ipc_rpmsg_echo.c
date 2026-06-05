@@ -472,6 +472,8 @@ void ipc_rp_mbox_callback(uint16_t remoteCoreId, uint16_t clientId, uint32_t msg
 #if defined(REMOTE_CORE)
             gbSuspendRemotecoreID = remoteCoreId;
             SemaphoreP_post(&gLpmSuspendSem);
+#elif defined (SOC_J722S)
+            IpcNotify_sendMsg(remoteCoreId, IPC_NOTIFY_CLIENT_ID_RP_MBOX, IPC_NOTIFY_RP_MBOX_SUSPEND_AUTO, 1u);
 #endif
         }
         else if (msgValue == IPC_NOTIFY_RP_MBOX_ECHO_REQUEST) /* This message is received after resuming from the MCU only LPM. */
