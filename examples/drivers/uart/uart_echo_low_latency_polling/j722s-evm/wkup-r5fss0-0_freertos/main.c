@@ -112,6 +112,9 @@ void main_thread(void *args)
 
     uart_echo_low_latency_polling(NULL);
 
+    /* If this task ends, suspend to ram doesn't work anymore on J722s */
+    while(1);
+
     /* Close board and flash drivers */
     Board_driversClose();
     /* Close drivers */
